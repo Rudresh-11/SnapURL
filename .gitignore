@@ -1,0 +1,66 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files (secrets, DB credentials, etc.)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+log/
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Runtime data
+tmp/
+temp/
+cache/
+coverage/
+dist/
+build/
+.out/
+.next/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# TypeScript build output (if applicable)
+*.tsbuildinfo
+dist/
+out/
+
+# PostgreSQL-related
+pgdata/
+*.sql
+*.dump
+
+# Docker
+docker-compose.override.yml
+.docker/
+*.tar
+
+# Misc
+*.tgz
+*.swp
