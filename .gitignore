@@ -53,6 +53,7 @@ out/
 
 # PostgreSQL-related
 pgdata/
+pgadmin/
 *.sql
 *.dump
 

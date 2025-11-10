@@ -23,5 +23,10 @@ services:
           PGADMIN_DEFAULT_PASSWORD: admin123
     ports:
       - "8080:80"
+    volumes:
+      - ./data/pgadmin:/var/lib/pgadmin
     depends_on:
       - db
+
+volumes:
+  pgdata:
