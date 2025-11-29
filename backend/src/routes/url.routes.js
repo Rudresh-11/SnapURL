@@ -7,6 +7,6 @@ const router = Router();
 
 router.post("/shorten", verifyJWT, createUrl);
 router.get("/get", verifyJWT, getUserUrls);
-router.delete("/:id", verifyJWT, deleteUrl);
+router.delete("/delete/:id", verifyJWT, deleteUrl);
 
 export default router;

@@ -36,13 +36,13 @@ export const redirectUrl = async (req, res) => {
                 ? "Tablet"
                 : "Desktop";
 
-        const country = req.headers["cf-ipcountry"];
+        let country = req.headers["cf-ipcountry"];
 
         if (!country || country.length !== 2) {
               const geo = geoip.lookup(ip);
               country = geo?.country || "Unknown";
         }
-
+        
         await ClickModel.recordClick(url.id, ip, country, deviceType, referrer);
 
         return res.redirect(url.original_url);
