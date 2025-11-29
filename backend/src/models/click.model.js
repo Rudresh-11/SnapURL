@@ -6,7 +6,7 @@ export const ClickModel = {
     const query = `
       INSERT INTO clicks (url_id, ip_address, country, device_type, referrer)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, created_at;
+      RETURNING id, clicked_at;
     `;
     const values = [urlId, ipAddress, country, deviceType, referrer];
     const result = await db.query(query, values);

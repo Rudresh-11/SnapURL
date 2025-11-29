@@ -51,7 +51,7 @@ export const UserModel = {
     const db = getDB();
     const query = `
       UPDATE users
-      SET access_token = NULL, refresh_token = NULL, updated_at = NOW()
+      SET refresh_token = NULL, updated_at = NOW()
       WHERE id = $1;
     `;
     await db.query(query, [userId]);
