@@ -6,14 +6,19 @@ import { ApiResponse } from "./src/utils/ApiResponse.js";
 import redirectRouter from "./src/routes/redirect.routes.js";
 import analyticsRoutes from "./src/routes/analytics.routes.js";
 import { verifyJWT } from "./src/middlewares/auth.middleware.js";
-
+import { errorHandler } from "./src/middlewares/errorhandler.middleware.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cookieParser());
 
 // Routes
 
@@ -27,5 +32,7 @@ app.get("/api/test", (req, res) => {
 });
 
 app.use("/", redirectRouter);
+
+app.use(errorHandler);
 
 export default app;

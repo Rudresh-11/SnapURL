@@ -13,6 +13,13 @@ export const UserModel = {
     return result.rows[0];
   },
 
+  async getUserByUsername(username) {
+    const db = getDB();
+    const query = `SELECT * FROM users WHERE username = $1;`;
+    const result = await db.query(query, [username]);
+    return result.rows[0];
+  },
+  
   async getUserByEmail(email) {
     const db = getDB();
     const query = `SELECT * FROM users WHERE email = $1;`;

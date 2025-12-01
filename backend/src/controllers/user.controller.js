@@ -24,7 +24,6 @@ export const generateTokens = (user) => {
 
 // User registration
 export const registerUser = async (req, res) => {
-  try {
     const { username, email, password } = req.body;
     console.log(username, email, password);
 
@@ -33,6 +32,10 @@ export const registerUser = async (req, res) => {
     }
 
     const existingUser = await UserModel.getUserByEmail(email);
+    const existingUsername = await UserModel.getUserByUsername(username);
+    if (existingUsername) {
+      throw new ApiError(409, "Username already in use");
+    }
     if (existingUser) {
       throw new ApiError(409, "Email already in use");
     }
@@ -41,15 +44,11 @@ export const registerUser = async (req, res) => {
 
     return res.status(201).json(
       new ApiResponse(200, newUser, "User registered Successfully")
-    )
-  } catch (error) {
-    throw new ApiError(500, "Registration failed", [error]);
-  }
+    );
 };
 
 // User login
 export const loginUser = async (req, res) => {
-  try {
     const { email, password } = req.body;
     const user = await UserModel.getUserByEmail(email);
     if (!user) {
@@ -73,10 +72,6 @@ export const loginUser = async (req, res) => {
       .json(
         new ApiResponse(200, tokens, "Login successful")
       )
-  } catch (error) {
-    console.error("Login error:", error);
-    throw new ApiError(500, "Login failed", error);
-  }
 };
 
 

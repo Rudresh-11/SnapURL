@@ -19,6 +19,12 @@ export const UrlModel = {
     return result.rows[0];
   },
 
+  async getUrlById(id) {
+    const db = getDB();
+    const result = await db.query(`SELECT * FROM urls WHERE id = $1;`, [id]);
+    return result.rows[0];
+  },
+
   async getUrlsByUser(userId) {
     const db = getDB();
     const result = await db.query(

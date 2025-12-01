@@ -8,7 +8,7 @@ export const verifyJWT = async (req, res, next) => {
 
         
 
-        console.log("Verifying token:", token);
+        // console.log("Verifying token:", token);
         if (!token) {
             throw new ApiError(401, "Unauthorized request")
         }
