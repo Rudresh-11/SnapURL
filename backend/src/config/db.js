@@ -12,9 +12,15 @@ let pool;
 //     port: process.env.DB_PORT || 5432,
 //   });
 
-  export default async function connectDB() {
+export default async function connectDB() {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    allowExitOnIdle: true,
+    keepAlive: true,
+    statement_timeout: 5000,
+    connectionTimeoutMillis: 5000,
+    host: undefined,
   });
 
   try {
