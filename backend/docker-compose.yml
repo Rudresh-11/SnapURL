@@ -10,3 +10,12 @@ services:
     env_file: .env
     volumes:
       - ./:/usr/src/app
+
+  dbgate:
+    image: dbgate/dbgate
+    container_name: snap_db_viewer
+    restart: always
+    ports:
+      - "8083:3000"         # Open http://localhost:8083
+    environment:
+      CONNECTIONS_SOURCE: "localjson"
