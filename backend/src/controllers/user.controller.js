@@ -74,6 +74,11 @@ export const loginUser = async (req, res) => {
       )
 };
 
+export const getCurrentUser = async (req, res) => {
+  return res.status(200).json(
+    new ApiResponse(200, req.user, "User fetched successfully")
+  )
+}
 
 export const logoutUser = async (req, res) => {
   try {
