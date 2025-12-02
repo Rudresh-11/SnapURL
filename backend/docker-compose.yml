@@ -1,32 +1,12 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  db:
-    image: postgres:latest
-    container_name: snapurl-db
+  backend:
+    build: .
+    container_name: snap_backend
     restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: snapurl123
-      POSTGRES_DB: snapurlDB
     ports:
-      - "5432:5432"
+      - "5000:5000"
+    env_file: .env
     volumes:
-      - ./data/pgdata:/var/lib/postgresql
-  
-  adminer:
-    image: dpage/pgadmin4
-    container_name: snapurl-pgadmin
-    restart: always
-    environment:
-          PGADMIN_DEFAULT_EMAIL: admin@snapurl.com
-          PGADMIN_DEFAULT_PASSWORD: admin123
-    ports:
-      - "8080:80"
-    volumes:
-      - ./data/pgadmin:/var/lib/pgadmin
-    depends_on:
-      - db
-
-volumes:
-  pgdata:
+      - ./:/usr/src/app
