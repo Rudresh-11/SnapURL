@@ -24,7 +24,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/url",verifyJWT, urlRoutes);
-app.use("/api/analytics",verifyJWT, analyticsRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 
 app.get("/api/test", (req, res) => {

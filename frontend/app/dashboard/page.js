@@ -1,352 +1,367 @@
 "use client";
 
-import React, { useState,useEffect } from 'react';
-import { 
-  LayoutDashboard, 
-  Link as LinkIcon, 
-  Settings, 
-  LogOut, 
-  Plus, 
-  Copy, 
-  BarChart3, 
-  ExternalLink,
-  MoreVertical,
-  Search,
-  Bell,
-  X
-} from 'lucide-react';
-import api from '@/lib/api';
-import { generateShortCode } from '@/lib/shortcode';
-import { convertToLocalTime } from '@/lib/timeconverter';
+import { useEffect, useState } from "react";
+import { Calendar, Filter, Download, MoreVertical, TrendingUp, Home, Link2, QrCode, FileText, BarChart3, Megaphone, Globe, Settings } from "lucide-react";
 
-export default function App() {
-  const [user, setUser] = useState({username:'',email:''});
-  const [urls, setUrls] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newUrl, setNewUrl] = useState('');
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [loading, setLoading] = useState(true);
-    const [originalUrl, setOriginalUrl] = useState("");
-    const [customAlias, setCustomAlias] = useState("");
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
 
-  const fetchUrls = async () => {
-    try {
-      const res = await api.get(`/url/get`, {
-        withCredentials: true,
-      });
-      console.log("urldata", res.data.data);
-      
-      setUrls(res.data.data);
-      setLoading(false);
-    } catch (err) {
-      console.error("Failed to load URLs:", err);
-    }
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+
+import { PieChart, Pie, LineChart, Line, XAxis, YAxis, BarChart, Bar, CartesianGrid } from "recharts";
+
+const chartConfig = {
+  clicks: { label: "Clicks", color: "hsl(var(--chart-1))" },
+  desktop: { label: "Desktop", color: "hsl(180, 100%, 45%)" },
+  mobile: { label: "Mobile", color: "hsl(210, 100%, 50%)" },
+  tablet: { label: "Tablet", color: "hsl(210, 100%, 35%)" },
+};
+
+
+
+export default function AnalyticsPage() {
+  const [dateRange, setDateRange] = useState("Nov 28, 2025 → Dec 4, 2025");
+  const [selectedTab, setSelectedTab] = useState("Countries");
+
+  // Sample data - replace with your API data
+  const overview = {
+    summary: {
+      total_engagements: "45",
+      top_date: "November 22, 2025",
+    },
+    devices: [
+      { device_type: "Desktop", total: 146 },
+      { device_type: "E-Reader", total: 101 },
+      { device_type: "Tablet", total: 70 },
+      { device_type: "Mobile", total: 50 },
+      { device_type: "Unknown", total: 14 },
+    ],
+    countries: [
+      { country: "United States", total: 205, percentage: 45.9 },
+      { country: "Japan", total: 6, percentage: 1.3 },
+      { country: "Mexico", total: 19, percentage: 4.3 },
+      { country: "Russian Federation", total: 5, percentage: 1.1 },
+      { country: "India", total: 27, percentage: 6 },
+      { country: "Canada", total: 80, percentage: 17.9 },
+      { country: "United Kingdom", total: 205, percentage: 45.9 },
+      { country: "France", total: 80, percentage: 17.9 },
+      { country: "Germany", total: 80, percentage: 17.9 },
+    ],
+    referrers: [
+      { referrer: "LinkedIn", total: 45 },
+      { referrer: "Facebook", total: 5 },
+      { referrer: "Google", total: 20 },
+      { referrer: "Twitter", total: 5 },
+      { referrer: "Bitly", total: 15 },
+      { referrer: "Direct", total: 10 },
+      { referrer: "Other", total: 5 },
+    ],
+    daily: Array.from({ length: 20 }, (_, i) => ({
+      day: `Dec ${i + 1}`,
+      clicks: Math.floor(Math.random() * 40) + 10,
+    })),
   };
 
-  useEffect(() => {
-    async function validateUser() {
-      try {
-        const res = await api.get(`/auth/me`, {});
+  const deviceData = overview.devices.map((d) => ({
+    name: d.device_type,
+    value: Number(d.total),
+  }));
 
-        console.log("userdata", res.data.data);
-        
-        setUser(res.data.data);
-        fetchUrls();
-      } catch (err) {
-        window.location.href = "/login";
-      }
-    }
+  const countryData = overview.countries.map((d) => ({
+    name: d.country,
+    value: Number(d.total),
+  }));
 
-    validateUser();
-  }, []);
+  const referrerData = overview.referrers.map((d) => ({
+    name: d.referrer ?? "Direct",
+    value: Number(d.total),
+  }));
 
-  // Copy to clipboard handler
-  const handleCopy = (text) => {
-    // In a real app, use navigator.clipboard.writeText(text);
-    // Here we simulate it visually
-    const btn = document.getElementById(`copy-btn-${text}`);
-    if(btn) {
-      const originalContent = btn.innerHTML;
-      btn.innerText = 'Copied!';
-      btn.classList.add('bg-green-100', 'text-green-700');
-      setTimeout(() => {
-        btn.innerHTML = originalContent;
-        btn.classList.remove('bg-green-100', 'text-green-700');
-      }, 2000);
-    }
-  };
-
-  // Add new URL handler
-  const handleShorten = async (e) => {
-    e.preventDefault();
-
-    try {
-      const payload = {
-        original_url: originalUrl,
-        custom_alias: customAlias || null,
-      };
-
-      const res = await api.post(`/url/shorten`, payload, {
-        withCredentials: true,
-      });
-
-      setUrls([res.data.data, ...urls]);
-      setOriginalUrl("");
-      setCustomAlias("");
-      setIsModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Failed to create short link.");
-    }
-  };
+  const dailyData = overview.daily;
 
   return (
-    <div className="flex h-screen bg-gray-50 font-sans text-slate-800">
-      
-      {/* SIDEBAR - Matches the left section of wireframe */}
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
-        {/* Logo Area */}
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-indigo-600 flex items-center gap-2">
-            SnapURL
-          </h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button className="p-2 hover:bg-gray-100 rounded">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M12 4L6 10L12 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-gray-50'}`}
-          >
-            <LayoutDashboard size={20} />
-            Dashboard
+        <div className="flex items-center gap-3">
+          <button className="px-4 py-2 text-sm hover:bg-gray-100 rounded flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Search...
           </button>
-          <button 
-            onClick={() => setActiveTab('urls')}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${activeTab === 'urls' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-gray-50'}`}
-          >
-            <LinkIcon size={20} />
-            Your URLs
+          <button className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium">
+            Upgrade
           </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 rounded-lg hover:bg-gray-50 transition-colors">
-            <BarChart3 size={20} />
-            Analytics
+          <button className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+            ?
           </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 rounded-lg hover:bg-gray-50 transition-colors">
-            <Settings size={20} />
-            Settings
+          <button className="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center text-sm">
+            R
           </button>
-        </nav>
-
-        {/* Profile Section - Matches "profile" circle in wireframe */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold border-2 border-white shadow-sm">
-              {user?.username[0]?.toUpperCase()||'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">{user.username}</p>
-              <p className="text-xs text-slate-500 truncate">{user.email}</p>
-            </div>
-          </div>
         </div>
-      </aside>
+      </div>
 
-      {/* MAIN CONTENT - Matches right section of wireframe */}
-      <main className="flex-1 overflow-y-auto">
-        
-        {/* Mobile Header */}
-        <header className="bg-white border-b border-gray-200 p-4 flex items-center justify-between md:hidden sticky top-0 z-10">
-          <span className="font-bold text-indigo-600 text-xl">SnapURL</span>
-          <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">JD</div>
-        </header>
+      <div className="flex">
 
-        <div className="max-w-5xl mx-auto p-6 md:p-8 space-y-8">
-          
-          {/* Header & Search */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
-              <p className="text-slate-500">Overview of your link performance</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Search links..." 
-                  className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-64"
-                />
-              </div>
-              <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
-                <Bell size={20} />
-              </button>
-            </div>
+        {/* Main Content */}
+        <div className="flex-1 p-6">
+          <button className="ml-auto mb-4 px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium flex items-center gap-2 float-right">
+            <span>+</span> Add module
+          </button>
+
+          {/* Date Range & Filters */}
+          <div className="flex items-center gap-3 mb-6">
+            <button className="px-4 py-2 border rounded text-sm flex items-center gap-2 hover:bg-gray-50">
+              <Calendar className="w-4 h-4" />
+              {dateRange}
+            </button>
+            <button className="px-4 py-2 border rounded text-sm flex items-center gap-2 hover:bg-gray-50">
+              <Filter className="w-4 h-4" />
+              Add filters
+            </button>
+            <span className="text-sm text-gray-600">
+              Showing data for all links and QR Codes
+            </span>
           </div>
 
-          {/* Top Performing URLs Section - Matches wireframe "Top performing urls" */}
-          <section className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-              <BarChart3 size={120} className="text-indigo-600" />
-            </div>
-            
-            <div className="flex items-center justify-between mb-6 relative z-10">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <BarChart3 className="text-indigo-600" size={20} />
-                Top Performing URL
-              </h3>
-              <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">Trending</span>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 relative z-10">
-              <div className="col-span-2 space-y-4">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm text-slate-500">
-                    <span>snapurl.com/k92xs</span>
-                    <span>1,245 clicks</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-600 rounded-full w-[85%] animate-pulse"></div>
-                  </div>
+          {/* Top Row - 3 Cards */}
+          <div className="grid grid-cols-3 gap-6 mb-6">
+            {/* Top Performing Date */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-sm font-medium text-gray-600">
+                  Top performing date by Total Engagements
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-sm text-slate-500">
-                    <span>snapurl.com/m9s8d</span>
-                    <span>856 clicks</span>
-                  </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-400 rounded-full w-[60%]"></div>
-                  </div>
+                <MoreVertical className="w-4 h-4 text-gray-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-5 h-5" />
+                  <div className="text-2xl font-bold">November 22, 2025</div>
                 </div>
-              </div>
-              
-              <div className="bg-indigo-50 rounded-xl p-4 flex flex-col justify-center items-center text-center">
-                <span className="text-3xl font-bold text-indigo-600">2.5k</span>
-                <span className="text-sm text-indigo-600/80 font-medium">Total Clicks today</span>
-              </div>
-            </div>
-          </section>
+                <div className="text-3xl font-bold mb-1">45 Engagements</div>
+                <div className="text-xs text-gray-500">Nov 28 - Dec 4, 2025</div>
+              </CardContent>
+            </Card>
 
-          {/* Action Button - Matches wireframe "+ short new url" */}
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-xl shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 font-medium transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-          >
-            <Plus size={24} />
-            Shorten New URL
-          </button>
-
-          {/* URL List - Matches wireframe list section */}
-          <section className="space-y-4">
-             <div className="flex items-center justify-between">
-               <h3 className="font-semibold text-lg text-slate-800">Recent Links</h3>
-               <button className="text-sm text-indigo-600 font-medium hover:underline">View All</button>
-             </div>
-
-             <div className="space-y-3">
-               {urls.map((url) => (
-                 <div key={url.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
-                    <div className="flex items-start gap-4 overflow-hidden">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-50 flex-shrink-0 flex items-center justify-center text-indigo-600">
-                        <LinkIcon size={20} />
-                      </div>
-                      <div className="min-w-0 flex-1">
+            {/* Device Breakdown */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-sm font-medium text-gray-600">
+                  Total Engagements by device
+                </div>
+                <div className="flex gap-1">
+                  <Download className="w-4 h-4 text-gray-400" />
+                  <MoreVertical className="w-4 h-4 text-gray-400" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-6">
+                  <ChartContainer config={chartConfig} className="w-[140px] h-[140px]">
+                    <PieChart>
+                      <Pie
+                        data={deviceData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={45}
+                        outerRadius={70}
+                        strokeWidth={0}
+                      />
+                    </PieChart>
+                  </ChartContainer>
+                  <div className="flex-1 space-y-2 text-sm">
+                    {overview.devices.map((device, i) => (
+                      <div key={i} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-slate-900 truncate">{`${process.env.NEXT_PUBLIC_BASE_URL}/${url.short_code}`}</h4>
-                          <span className="text-xs text-slate-400 font-normal hidden sm:inline-block">• {convertToLocalTime(url.created_at)}</span>
+                          <div className={`w-3 h-3 rounded-full ${
+                            i === 0 ? 'bg-cyan-400' : 
+                            i === 1 ? 'bg-cyan-300' :
+                            i === 2 ? 'bg-blue-600' :
+                            i === 3 ? 'bg-blue-300' : 'bg-orange-500'
+                          }`}></div>
+                          <span className="text-gray-700">{device.device_type}</span>
                         </div>
-                        <p className="text-sm text-indigo-600 font-medium truncate">{url.short_code}</p>
-                        <p className="text-xs text-slate-400 truncate mt-0.5">{url.original_url}</p>
+                        <span className="font-medium">{device.total}</span>
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-4 pl-14 sm:pl-0">
-                      <div className="flex items-center gap-1.5 text-slate-600 bg-gray-50 px-3 py-1.5 rounded-lg text-sm">
-                        <BarChart3 size={14} />
-                        <span className="font-medium">{url.total_clicks}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button 
-                          id={`copy-btn-${url.short_code}`}
-                          onClick={() => handleCopy(url.short_code)}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Copy Link"
-                        >
-                          <Copy size={18} />
-                        </button>
-                        <button onClick={() => window.open(`dashboard/${url.id}`, "_blank")} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-lg transition-colors sm:opacity-0 group-hover:opacity-100">
-                          <ExternalLink size={18} />
-                        </button>
-                        <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-lg transition-colors sm:opacity-0 group-hover:opacity-100">
-                          <MoreVertical size={18} />
-                        </button>
-                      </div>
-                    </div>
-                 </div>
-               ))}
-             </div>
-          </section>
-
-        </div>
-      </main>
-
-      {/* Shorten URL Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform transition-all scale-100">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-slate-900">Create New Link</h3>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleShorten} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Destination URL</label>
-                <div className="relative">
-                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input 
-                    type="url" 
-                    required
-                    placeholder="https://example.com/very-long-url..."
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                    value={originalUrl}
-                    onChange={(e) => setOriginalUrl(e.target.value)}
-                  />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Custom Alias (Optional)</label>
-                <div className="flex items-center">
-                  <span className="bg-gray-100 border border-r-0 border-gray-200 text-slate-500 px-3 py-3 rounded-l-xl text-sm">snapurl.com/</span>
-                  <input 
-                    type="text" 
-                    placeholder="my-link"
-                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                    value={customAlias || generateShortCode(6)}
-                    onChange={(e) => setCustomAlias(e.target.value)}
-                  />
-                </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="pt-2">
-                <button 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold shadow-lg shadow-indigo-200 transition-all transform active:scale-[0.98]"
-                >
-                  Create Short Link
-                </button>
-              </div>
-            </form>
+            {/* Referrers Bar Chart */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-sm font-medium text-gray-600">
+                  Total Engagements by referrer
+                </div>
+                <div className="flex gap-1">
+                  <Download className="w-4 h-4 text-gray-400" />
+                  <MoreVertical className="w-4 h-4 text-gray-400" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[160px]">
+                  <BarChart data={referrerData}>
+                    <Bar dataKey="value" fill="hsl(180, 100%, 45%)" radius={[4, 4, 0, 0]} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Middle Row - Line Chart + Location Card */}
+          <div className="grid grid-cols-3 gap-6 mb-6">
+            {/* Line Chart - Spans 2 columns */}
+            <Card className="col-span-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-sm font-medium text-gray-600">
+                  Total Engagements over time
+                </div>
+                <div className="flex gap-1">
+                  <Download className="w-4 h-4 text-gray-400" />
+                  <MoreVertical className="w-4 h-4 text-gray-400" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[200px]">
+                  <LineChart data={dailyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="clicks"
+                      stroke="hsl(180, 100%, 45%)"
+                      strokeWidth={2}
+                      dot={{ fill: "hsl(180, 100%, 45%)", r: 3 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Top Location */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-sm font-medium text-gray-600">
+                  Top performing location by Total Engagements
+                </div>
+                <MoreVertical className="w-4 h-4 text-gray-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-5 h-5" />
+                  <div className="text-lg font-bold">United States & United Kingdom</div>
+                </div>
+                <div className="text-3xl font-bold mb-1">205 Engagements</div>
+                <div className="text-xs text-gray-500">Nov 28 - Dec 4, 2025</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Bottom Row - Location Details */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Map */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-sm font-medium text-gray-600">
+                  Total Engagements by location
+                </div>
+                <div className="flex gap-1">
+                  <Download className="w-4 h-4 text-gray-400" />
+                  <MoreVertical className="w-4 h-4 text-gray-400" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="relative bg-gray-50 rounded h-[300px] flex items-center justify-center">
+                  <svg viewBox="0 0 800 400" className="w-full h-full">
+                    {/* Simple world map representation */}
+                    <rect x="0" y="0" width="800" height="400" fill="#f9fafb"/>
+                    {/* North America */}
+                    <path d="M 100 80 L 250 80 L 250 180 L 100 180 Z" fill="#5eead4" opacity="0.7"/>
+                    {/* Australia */}
+                    <path d="M 600 250 L 700 250 L 700 320 L 600 320 Z" fill="#5eead4" opacity="0.5"/>
+                    <text x="400" y="380" fontSize="12" textAnchor="middle" fill="#6b7280">
+                      0 - 50 - 100 - 150 - 200 - 250
+                    </text>
+                  </svg>
+                  <div className="absolute bottom-4 right-4 bg-white border rounded shadow-sm p-2">
+                    <button className="block px-2 py-1 text-lg">+</button>
+                    <button className="block px-2 py-1 text-lg">-</button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Location Table */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="text-sm font-medium text-gray-600">
+                  Total Engagements by location
+                </div>
+                <div className="flex gap-1">
+                  <Download className="w-4 h-4 text-gray-400" />
+                  <MoreVertical className="w-4 h-4 text-gray-400" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4 mb-4 border-b">
+                  <button 
+                    className={`pb-2 text-sm font-medium ${selectedTab === 'Countries' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+                    onClick={() => setSelectedTab('Countries')}
+                  >
+                    Countries
+                  </button>
+                  <button 
+                    className={`pb-2 text-sm font-medium ${selectedTab === 'Cities' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+                    onClick={() => setSelectedTab('Cities')}
+                  >
+                    Cities
+                  </button>
+                </div>
+                <div className="overflow-auto max-h-[220px]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="border-b">
+                        <th className="text-left py-2 font-medium text-gray-600">#</th>
+                        <th className="text-left py-2 font-medium text-gray-600">Country</th>
+                        <th className="text-right py-2 font-medium text-gray-600">Engagements</th>
+                        <th className="text-right py-2 font-medium text-gray-600">%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overview.countries.map((country, idx) => (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="py-2 text-gray-600">{idx + 1}</td>
+                          <td className="py-2 font-medium">{country.country}</td>
+                          <td className="py-2 text-right">{country.total}</td>
+                          <td className="py-2 text-right">{country.percentage}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      )}
-
+      </div>
     </div>
   );
 }
