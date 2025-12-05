@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Routes
-
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use("/api/auth", authRoutes);
 app.use("/api/url",verifyJWT, urlRoutes);
 app.use("/api/analytics", analyticsRoutes);
