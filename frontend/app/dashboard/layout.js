@@ -17,7 +17,7 @@ export default function DashboardLayout({ children }) {
 
           {/* TOP NAVBAR */}
           <DashboardTopbar 
-            userName="Rudresh Suryawanshi"
+            userName="User"
             userAvatar={null}
           />
 

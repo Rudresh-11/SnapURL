@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export default function DashboardTopbar({
-  userName = "User",
+  userName = "SnapUrl User",
   userAvatar = null,
 }) {
   const initial = userName?.charAt(0)?.toUpperCase() || "U";

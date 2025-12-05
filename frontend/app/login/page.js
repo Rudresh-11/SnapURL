@@ -5,13 +5,16 @@ import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api"; 
 import { useRouter } from "next/navigation";
+import useApi from "@/hooks/useApi";
 
 
 export default function LoginPage() {
   const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, error, request } = useApi(`/auth/login`, {
+  method: "POST",
+});
 
   const [form, setForm] = useState({
     email: "",
@@ -23,17 +26,10 @@ export default function LoginPage() {
   };
 
   const handleLogin = async () => {
-    try {
-      setLoading(true);
-
-      const res = await api.post("/auth/login", form); 
-      // expecting { success: true, data: { user, tokens } }
-        
-      router.push("/dashboard");
-    } catch (err) {
-      alert(err.response?.data?.message || "Login failed");
-    } finally {
-      setLoading(false);
+    const data = await request(form);
+    
+    if (data) {
+      router.push("/dashboard/links");
     }
   };
 
@@ -97,7 +93,7 @@ export default function LoginPage() {
         >
           {loading ? "Logging in..." : "Login"}
         </button>
-
+        {error && <p className="mt-4 text-red-600 text-center">{error}</p>}
         {/* Divider */}
         <div className="text-center my-6 text-gray-500">— or —</div>
 

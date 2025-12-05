@@ -90,31 +90,6 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button className="p-2 hover:bg-gray-100 rounded">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M12 4L6 10L12 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="px-4 py-2 text-sm hover:bg-gray-100 rounded flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            Search...
-          </button>
-          <button className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium">
-            Upgrade
-          </button>
-          <button className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-            ?
-          </button>
-          <button className="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center text-sm">
-            R
-          </button>
-        </div>
-      </div>
 
       <div className="flex">
 
