@@ -24,7 +24,7 @@ app.use(cookieParser());
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use("/api/auth", authRoutes);
 app.use("/api/url",verifyJWT, urlRoutes);
-app.use("/api/analytics", analyticsRoutes);
+app.use("/api/analytics",verifyJWT, analyticsRoutes);
 
 
 app.get("/api/test", (req, res) => {

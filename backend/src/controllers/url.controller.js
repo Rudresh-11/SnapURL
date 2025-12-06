@@ -2,18 +2,21 @@ import { UrlModel } from "../models/url.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { generateShortCode } from "../utils/shortCodeGenerator.js";
+import { fetchMetadata } from "../utils/fetchMeta.js";
 
 // Create a new shortened URL
 export const createUrl = async (req, res) => {
-  try {
     const userId = req.user.id;
     const { originalUrl, customAlias, expiresAt } = req.body;
+    if (!originalUrl) {
+        throw new ApiError(400, "Original URL is required");
+    }
     let shortCode;
 
     if (customAlias) {
         const existingUrl = await UrlModel.getUrlByShortCode(customAlias);
         if (existingUrl) {
-            throw new ApiError(409, "Custom alias already in use");
+            throw new ApiError(409, ` /${customAlias} is already taken. Please choose another one. (leave blank for random)`);
         }
         shortCode = customAlias;
     } else {
@@ -29,10 +32,6 @@ export const createUrl = async (req, res) => {
     return res.status(201).json(
       new ApiResponse(201, newUrl, "Short URL created successfully")
     );
-  } catch (error) {
-    throw new ApiError(500, "URL creation failed", [error]);
-  }
-
 };
 
 // Get all URLs for the authenticated user  
@@ -55,6 +54,8 @@ export const deleteUrl = async (req, res) => {
     const userId = req.user.id;
     const url = await UrlModel.getUrlById(urlId);
 
+    // throw new ApiError(404, "Forced error for testing"); // Test error handling
+
     if (!url) {
       throw new ApiError(404, "URL not found");
     }
@@ -67,6 +68,21 @@ export const deleteUrl = async (req, res) => {
     );
   } catch (error) {
     throw new ApiError(500, "Failed to delete URL", [error]);
+  }
+};
+
+// Get the title of a webpage from its URL
+export const getMetafromUrl = async (req, res) => {
+  try {
+    const { url } = req.body;
+    const preview = await fetchMetadata(url);
+    const title = preview.title;
+    console.log(preview)
+    return res.status(200).json(
+      new ApiResponse(200, { title }, "Metadata fetched successfully")
+    );
+  } catch (error) {
+    throw new ApiError(500, "Failed to fetch metadata from URL", [error]);
   }
 };
 

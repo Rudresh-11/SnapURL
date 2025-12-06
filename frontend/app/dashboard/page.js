@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import { Calendar, Filter, Download, MoreVertical, TrendingUp, Home, Link2, QrCode, FileText, BarChart3, Megaphone, Globe, Settings } from "lucide-react";
 
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card,CardHeader,CardTitle,CardContent,} from "@/components/ui/card";
 
 import {
   ChartContainer,
@@ -215,7 +210,7 @@ export default function AnalyticsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={chartConfig} className="h-[160px]">
+                <ChartContainer config={chartConfig} className="h-40">
                   <BarChart data={referrerData}>
                     <Bar dataKey="value" fill="hsl(180, 100%, 45%)" radius={[4, 4, 0, 0]} />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} />

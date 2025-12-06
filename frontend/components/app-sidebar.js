@@ -61,8 +61,8 @@ export function AppSidebar() {
                     <Image
                         src="/logo.png"  // <-- replace with your logo path
                         alt="SnapURL Logo"
-                        width={32}
-                        height={32}
+                        width={64}
+                        height={64}
                         className="rounded"
                     />
 
@@ -89,7 +89,7 @@ export function AppSidebar() {
                                             asChild
                                             isActive={isActive}
                                             className={`p-3 transition ${isActive
-                                                    ? "bg-[#E5EEFF] text-blue-600"
+                                                    ? "bg-[#E5EEFF] text-blue-600 font-medium"
                                                     : "text-gray-700 hover:bg-gray-100"
                                                 }`}
                                         >
