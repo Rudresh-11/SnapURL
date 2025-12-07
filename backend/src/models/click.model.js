@@ -21,7 +21,19 @@ export const ClickModel = {
 
   async getOverview(urlId) {
     const db = getDB();
-
+    
+    const urlDetailsQuery = `
+      SELECT 
+        id,
+        original_url,
+        short_code,
+        custom_alias,
+        created_at,
+        total_clicks
+      FROM urls
+      WHERE id = $1
+      LIMIT 1;
+    `;
     const summaryQuery = `
     SELECT 
       COUNT(*) AS total_clicks,
@@ -62,7 +74,8 @@ export const ClickModel = {
     GROUP BY referrer;
   `;
 
-    const [summary, daily, devices, countries, referrers] = await Promise.all([
+    const [urlDetails, summary, daily, devices, countries, referrers] = await Promise.all([
+      db.query(urlDetailsQuery, [urlId]),
       db.query(summaryQuery, [urlId]),
       db.query(dailyQuery, [urlId]),
       db.query(deviceQuery, [urlId]),
@@ -71,12 +84,27 @@ export const ClickModel = {
     ]);
 
     return {
+      url: urlDetails.rows[0],
       summary: summary.rows[0],
       daily: daily.rows,
       devices: devices.rows,
       countries: countries.rows,
       referrers: referrers.rows,
     };
+  },
+
+  async getClicksGroupedByDate(urlId) {
+    const db = getDB();
+    const query = `
+      SELECT DATE(clicked_at) AS date, COUNT(*) AS clicks
+      FROM clicks
+      WHERE url_id = $1
+      GROUP BY DATE(clicked_at)
+      ORDER BY DATE(clicked_at) ASC;
+    `;
+    const values = [urlId];
+    const result = await db.query(query, values);
+    return result.rows;
   }
 
 };

@@ -1,46 +1,73 @@
 'use client';
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { ChevronLeft, Copy, Share2, MoreVertical, Globe } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ChartBarInteractive } from '@/components/analytics/barchart.js';
 import { ChartBarLabelCustom } from '@/components/analytics/horizontalBarchart';
 import { ChartPieDonut } from '@/components/analytics/piechart';
+import { useParams } from 'next/navigation';
+import useApi from '@/hooks/useApi';
 
 export default function LinkAnalytics() {
+  const params = useParams();
+  const { urlId } = params;
 
-  // Sample data for engagements over time
-  const engagementData = [
-    { date: '11/1', clicks: 12 },
-    { date: '11/5', clicks: 18 },
-    { date: '11/10', clicks: 25 },
-    { date: '11/15', clicks: 32 },
-    { date: '11/20', clicks: 45 },
-    { date: '11/25', clicks: 38 },
-    { date: '11/30', clicks: 28 },
-    { date: '12/1', clicks: 22 },
-    { date: '12/5', clicks: 35 },
-    { date: '12/10', clicks: 42 },
-    { date: '12/15', clicks: 38 },
-    { date: '12/20', clicks: 30 },
-    { date: '12/25', clicks: 48 },
-    { date: '12/30', clicks: 52 },
-    { date: '1/4', clicks: 45 },
-    { date: '1/9', clicks: 38 },
-    { date: '1/14', clicks: 42 },
-    { date: '1/19', clicks: 36 },
-    { date: '1/24', clicks: 28 },
-    { date: '1/29', clicks: 32 }
-  ];
+  const overviewApi = useApi(`/analytics/${urlId}/overview`, {
+    auto: true,
+    method: "GET"
+  });
 
-  // Location data
-  const locationData = [
-    { rank: 1, country: 'USA', clicks: 245, percentage: 45 },
-    { rank: 2, country: 'Canada', clicks: 156, percentage: 28 },
-    { rank: 3, country: 'UK', clicks: 89, percentage: 16 },
-    { rank: 4, country: 'Germany', clicks: 34, percentage: 6 },
-    { rank: 5, country: 'France', clicks: 28, percentage: 5 }
-  ];
+  const overviewData = overviewApi.data?.data?.overview;
 
+  if (overviewApi.loading || !overviewData) {
+    return <div>Loading...</div>;
+  }
+
+
+  function normalizeData(apiDaily) {
+    return apiDaily.map(item => ({
+      date: item.day.split("T")[0],
+      clicks: Number(item.clicks)
+    }));
+  }
+
+  function formatLocationData(raw) {
+    // 1. Convert totals to numbers
+    const arr = raw.map(item => ({
+      country: item.country,
+      clicks: Number(item.total)
+    }));
+
+    // 2. Calculate total clicks
+    const totalClicks = arr.reduce((sum, item) => sum + item.clicks, 0);
+
+    // 3. Sort by clicks (descending)
+    arr.sort((a, b) => b.clicks - a.clicks);
+
+    // 4. Format with rank + percentage
+    return arr.map((item, index) => ({
+      rank: index + 1,
+      country: item.country,
+      clicks: item.clicks,
+      percentage: Math.round((item.clicks / totalClicks) * 100)
+    }));
+  }
+
+  function parseTitleFromUrl(url) {
+    try {
+      const hostname = new URL(url).hostname; // google.com
+      const name = hostname.replace("www.", "").split(".")[0]; // google
+      return name.charAt(0).toUpperCase() + name.slice(1); // Google
+    } catch {
+      return "Untitled";
+    }
+  }
+  const totalClicks = overviewData.summary.total_clicks;
+  const rawData = normalizeData(overviewData.daily);
+  const locationData = formatLocationData(overviewData.countries);
+
+  console.log('Overview Data:', overviewData);
+  console.log('Country Data:', overviewData);
   // Referrers data
   const referrersData = [
     { name: 'Direct', value: 156, color: '#3B82F6' },
@@ -74,7 +101,9 @@ export default function LinkAnalytics() {
   const handleCopy = () => {
     navigator.clipboard.writeText('bit.ly/44GwO8m');
   };
-
+  if (overviewApi.loading) {
+    return <div>Loading...</div>;
+  }
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -92,16 +121,16 @@ export default function LinkAnalytics() {
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-                  chatgpt.com – untitled
+                  {parseTitleFromUrl(overviewData.url.original_url)} – untitled
                 </h1>
                 <div className="flex items-center gap-2 mb-2">
                   <a
-                    href="https://bit.ly/44GwO8m"
+                    href={`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    bit.ly/44GwO8m
+                    {`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
                   </a>
                   <button onClick={handleCopy} className="text-gray-400 hover:text-gray-600">
                     <Copy className="w-4 h-4" />
@@ -110,11 +139,11 @@ export default function LinkAnalytics() {
                 <div className="text-sm text-gray-500 flex items-center gap-2">
                   <span className="text-gray-400">↪</span>
                   <span className="truncate max-w-2xl">
-                    https://chatgpt.com/g/g-692ee3e53c9c819187565520ea59656b-snapurl/c/6931a69c-d798-8320-a0d1-078f5f445f21
+                    {overviewData.url.original_url}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
-                  <span>📅 December 6, 2025 12:14 AM GMT+5:30</span>
+                  <span>📅 {new Date(overviewData.url.created_at).toLocaleString()}</span>
                   <span>🏷️ No tags</span>
                 </div>
               </div>
@@ -134,20 +163,7 @@ export default function LinkAnalytics() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Engagements Over Time */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Engagements over time</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={engagementData}>
-              <XAxis dataKey="date" stroke="#9CA3AF" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#9CA3AF" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px', color: '#fff' }}
-              />
-              <Bar dataKey="clicks" fill="#06B6D4" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-<ChartBarInteractive />
+        <ChartBarInteractive data={rawData} />
         {/* Locations */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
@@ -158,30 +174,32 @@ export default function LinkAnalytics() {
           </div>
 
           <div className="space-y-3">
-            {locationData.map((location) => (
-              <div key={location.rank} className="flex items-center gap-4">
-                <span className="text-sm text-gray-500 w-6">{location.rank}</span>
-                <span className="text-sm font-medium text-gray-900 w-24">{location.country}</span>
+            {(locationData).map((country) => (
+              <div key={country.rank} className="flex items-center gap-4">
+                <span className="text-sm text-gray-500 w-6">{country.rank}</span>
+                <span className="text-sm font-medium text-gray-900 w-24">{country.country}</span>
                 <div className="flex-1 bg-gray-100 rounded-full h-2 relative">
                   <div
                     className="bg-blue-500 h-2 rounded-full"
-                    style={{ width: `${location.percentage}%` }}
+                    style={{ width: `${country.percentage}%` }}
                   />
                 </div>
-                <span className="text-sm text-gray-600 w-12">{location.clicks}</span>
-                <span className="text-sm text-gray-500 w-12">{location.percentage}%</span>
+                <span className="text-sm text-gray-600 w-12">{country.clicks}</span>
+                <span className="text-sm text-gray-500 w-12">{country.percentage}%</span>
               </div>
             ))}
           </div>
         </div>
-
+        {/* <ChartBarLabelCustom/> */}
+        
+        
         {/* Referrers and Devices */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Referrers */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Referrers</h2>
             <div className="flex items-center gap-8">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <ResponsiveContainer width={180} height={180}>
                   <PieChart>
                     <Pie
@@ -225,7 +243,7 @@ export default function LinkAnalytics() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Devices</h2>
             <div className="flex items-center gap-8">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <ResponsiveContainer width={180} height={180}>
                   <PieChart>
                     <Pie

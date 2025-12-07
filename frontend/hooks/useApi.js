@@ -38,7 +38,12 @@ export default function useApi(
 
   // auto-fetch on mount
   useState(() => {
-    if (auto) request();
+    if (auto){
+      (async() => {
+        await request();
+      })();
+
+    }
   });
 
   return {
