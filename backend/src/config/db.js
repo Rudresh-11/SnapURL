@@ -13,19 +13,29 @@ let pool;
 //   });
 
 export default async function connectDB() {
+  console.log("Connecting to DB with connection string:", process.env.DATABASE_URL);
+  
   pool = new Pool({
+    
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
     allowExitOnIdle: true,
     keepAlive: true,
     statement_timeout: 5000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 20000,
     host: undefined,
   });
+// const pool = new Pool({
+//   connectionString: process.env.DATABASE_URL,
+//   ssl: {
+//     rejectUnauthorized: false
+//   }
+// });
 
   try {
-    await pool.query("SELECT NOW()");
-    console.log("PostgreSQL connected");
+    pool.query("SELECT NOW()")
+  .then(res => console.log("DB OK", res.rows))
+  .catch(err => console.error("QUERY FAILED", err));
   } catch (err) {
     console.error("DB Connection error:", err);
     throw err;

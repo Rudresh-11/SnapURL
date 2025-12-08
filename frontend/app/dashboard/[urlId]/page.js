@@ -1,28 +1,15 @@
 'use client';
 import { use, useState, useEffect } from 'react';
-import { ChevronLeft, Copy, Share2, MoreVertical, Globe } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ChevronLeft, Copy, Share2, MoreVertical, Globe, Calendar, TagIcon, Pencil, Share2Icon, Trash, Ticket, Check, CornerDownRight } from 'lucide-react';
 import { ChartBarInteractive } from '@/components/analytics/barchart.js';
-import { ChartBarLabelCustom } from '@/components/analytics/horizontalBarchart';
 import { ChartPieDonut } from '@/components/analytics/piechart';
 import { useParams } from 'next/navigation';
 import useApi from '@/hooks/useApi';
-
+import Link from 'next/link';
+import Image from 'next/image';
+import { DropdownMenuDemo } from '@/components/dropdown';
+import ConfirmDialog from '@/components/confirm-dialog';
 export default function LinkAnalytics() {
-  const params = useParams();
-  const { urlId } = params;
-
-  const overviewApi = useApi(`/analytics/${urlId}/overview`, {
-    auto: true,
-    method: "GET"
-  });
-
-  const overviewData = overviewApi.data?.data?.overview;
-
-  if (overviewApi.loading || !overviewData) {
-    return <div>Loading...</div>;
-  }
-
 
   function normalizeData(apiDaily) {
     return apiDaily.map(item => ({
@@ -62,47 +49,57 @@ export default function LinkAnalytics() {
       return "Untitled";
     }
   }
+
+  function formatDate(d) {
+    const date = new Date(d);
+
+    const formatted = date.toLocaleString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const offset = -date.getTimezoneOffset();
+    const sign = offset >= 0 ? "+" : "-";
+    const hrs = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
+    const mins = String(Math.abs(offset) % 60).padStart(2, "0");
+
+    return `${formatted} GMT${sign}${hrs}:${mins}`;
+  }
+  const params = useParams();
+  const { urlId } = params;
+
+  const [isCopied, setIsCopied] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const overviewApi = useApi(`/analytics/${urlId}/overview`, { auto: true, method: "GET" });
+  const overviewData = overviewApi.data?.data?.overview;
+
+  if (overviewApi.loading || !overviewData) {
+    return <div>Loading...</div>;
+  }
+
   const totalClicks = overviewData.summary.total_clicks;
   const rawData = normalizeData(overviewData.daily);
   const locationData = formatLocationData(overviewData.countries);
+  const myreferrersData = overviewData.referrers;
+  const devicesData = overviewData.devices;
 
-  console.log('Overview Data:', overviewData);
-  console.log('Country Data:', overviewData);
-  // Referrers data
-  const referrersData = [
-    { name: 'Direct', value: 156, color: '#3B82F6' },
-    { name: 'Twitter', value: 124, color: '#10B981' },
-    { name: 'Facebook', value: 98, color: '#F59E0B' },
-    { name: 'LinkedIn', value: 76, color: '#8B5CF6' },
-    { name: 'Other', value: 54, color: '#06B6D4' }
-  ];
 
-  const referrersList = [
-    { source: 'Direct', clicks: 156, percentage: 31 },
-    { source: 'Twitter', clicks: 124, percentage: 24 },
-    { source: 'Facebook', clicks: 98, percentage: 19 },
-    { source: 'LinkedIn', clicks: 76, percentage: 15 },
-    { source: 'Other', clicks: 54, percentage: 11 }
-  ];
-
-  // Devices data
-  const devicesData = [
-    { name: 'Mobile', value: 245, color: '#06B6D4' },
-    { name: 'Desktop', value: 189, color: '#F59E0B' },
-    { name: 'Tablet', value: 74, color: '#3B82F6' }
-  ];
-
-  const devicesList = [
-    { device: 'Mobile', clicks: 245, percentage: 48 },
-    { device: 'Desktop', clicks: 189, percentage: 37 },
-    { device: 'Tablet', clicks: 74, percentage: 15 }
-  ];
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('bit.ly/44GwO8m');
+    navigator.clipboard.writeText(`https://${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
+
+  const handleDelete = async (id) => {
+    alert("Delete functionality is not implemented yet.");
+  };
+
   if (overviewApi.loading) {
-    return <div>Loading...</div>;
+    return <div>Loading12...</div>;
   }
   return (
     <div className="min-h-screen bg-gray-50">
@@ -111,13 +108,13 @@ export default function LinkAnalytics() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
             <ChevronLeft className="w-4 h-4" />
-            <span className="font-medium">Back to list</span>
+            <span className="font-medium"><Link href="/dashboard/links">Back to list</Link></span>
           </button>
 
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Globe className="w-6 h-6 text-gray-600" />
+                <Image width={24} height={24} src={`https://www.google.com/s2/favicons?domain=${overviewData.url.original_url}`} alt="Favicon" className="w-6 h-6" />
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900 mb-2">
@@ -125,35 +122,62 @@ export default function LinkAnalytics() {
                 </h1>
                 <div className="flex items-center gap-2 mb-2">
                   <a
-                    href={`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
+                    href={`https://${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
                     {`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
                   </a>
-                  <button onClick={handleCopy} className="text-gray-400 hover:text-gray-600">
-                    <Copy className="w-4 h-4" />
+                  <button onClick={handleCopy} className="text-gray-400 hover:text-blue-600 cursor-pointer">
+                    {isCopied ? <Check className="w-4 h-4 " /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
                 <div className="text-sm text-gray-500 flex items-center gap-2">
-                  <span className="text-gray-400">↪</span>
+                  <span className="text-gray-400"><CornerDownRight className="w-4 h-4" /></span>
                   <span className="truncate max-w-2xl">
-                    {overviewData.url.original_url}
+                    <a className='hover:underline' href={overviewData.url.original_url} target="_blank" rel="noopener noreferrer">{overviewData.url.original_url}</a>
                   </span>
                 </div>
+                <div className="border-b border-gray-300 mt-3 mb-2 w-full"></div>
                 <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
-                  <span>📅 {new Date(overviewData.url.created_at).toLocaleString()}</span>
-                  <span>🏷️ No tags</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {formatDate(overviewData.url.created_at)}
+                  </span>
+
+                  <span className="flex items-center gap-1">
+                    <TagIcon className="w-4 h-4" />
+                    No tags - <span className='text-gray-400'>Feature will be added soon</span>
+                  </span>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
+              <button className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer">
                 <Share2 className="w-5 h-5 text-gray-600" />
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg">
-                <MoreVertical className="w-5 h-5 text-gray-600" />
+              <button className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer">
+                <DropdownMenuDemo
+                  trigger={<MoreVertical className="w-5 h-5 text-gray-600" />}
+                  label="Actions"
+                  items={[
+                    {
+                      label: "Delete",
+                      icon: <Trash className="w-4 h-4 text-red-500" />,
+                      onClick: () => {setShowConfirm(true);},
+                    },
+                  ]}
+                />
+                <ConfirmDialog
+                  open={showConfirm}
+                  setOpen={setShowConfirm}
+                  title="Delete Link"
+                  description="Are you sure you want to delete this link? This action cannot be undone."
+                  confirmText="Delete"
+                  cancelText="Cancel"
+                  onConfirm={handleDelete}
+                />
               </button>
             </div>
           </div>
@@ -191,96 +215,24 @@ export default function LinkAnalytics() {
           </div>
         </div>
         {/* <ChartBarLabelCustom/> */}
-        
-        
+
+
         {/* Referrers and Devices */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Referrers */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Referrers</h2>
-            <div className="flex items-center gap-8">
-              <div className="shrink-0">
-                <ResponsiveContainer width={180} height={180}>
-                  <PieChart>
-                    <Pie
-                      data={referrersData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {referrersData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-2">
-                {referrersList.map((referrer, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: referrersData[index].color }}
-                      />
-                      <span className="text-gray-700">{referrer.source}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-gray-900 font-medium">{referrer.clicks}</span>
-                      <span className="text-gray-500 w-10">{referrer.percentage}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
+          <ChartPieDonut
+            data={myreferrersData}
+            labelKey="referrer"
+            valueKey="total"
+            title="Referrer Traffic"
+          />
           {/* Devices */}
-          <ChartPieDonut />
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Devices</h2>
-            <div className="flex items-center gap-8">
-              <div className="shrink-0">
-                <ResponsiveContainer width={180} height={180}>
-                  <PieChart>
-                    <Pie
-                      data={devicesData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {devicesData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex-1 space-y-2">
-                {devicesList.map((device, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: devicesData[index].color }}
-                      />
-                      <span className="text-gray-700">{device.device}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-gray-900 font-medium">{device.clicks}</span>
-                      <span className="text-gray-500 w-10">{device.percentage}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <ChartPieDonut
+            title="Device Breakdown"
+            data={devicesData}
+            labelKey="device_type"
+            valueKey="total"
+          />
+
         </div>
       </div>
     </div>

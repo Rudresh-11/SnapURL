@@ -11,6 +11,9 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     console.log("API Request:", config.method.toUpperCase(), config.url);
+    if (config.showErrorToast === false) {
+      config._skipErrorToast = true;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -24,6 +27,9 @@ api.interceptors.response.use(
     const msg = error.response?.data?.message;
     if (msg) {
       console.error("API Error:", msg);
+    }
+    if (!error.config?._skipErrorToast) {
+      handleToastError(error);
     }
     // You can later add refresh token handling here (important for production)
     // if (error.response?.status === 401) {

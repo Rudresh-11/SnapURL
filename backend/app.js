@@ -7,6 +7,7 @@ import redirectRouter from "./src/routes/redirect.routes.js";
 import analyticsRoutes from "./src/routes/analytics.routes.js";
 import { verifyJWT } from "./src/middlewares/auth.middleware.js";
 import { errorHandler } from "./src/middlewares/errorhandler.middleware.js";
+import { renderDelay } from "./src/middlewares/renderDelay.middleware.js";
 import cookieParser from "cookie-parser";
 
 const app = express();
@@ -19,6 +20,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(renderDelay);
 
 // Routes
 app.get('/favicon.ico', (req, res) => res.status(204).end());
@@ -32,7 +34,7 @@ app.get("/api/test", (req, res) => {
 });
 
 app.use("/", redirectRouter);
-
+app.use(renderDelay);
 app.use(errorHandler);
 
 export default app;

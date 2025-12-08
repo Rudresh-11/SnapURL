@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,21 +14,25 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function ConfirmDialog({
-  trigger,          // UI element to open dialog
+  trigger = null,
   title = "Are you sure?",
   description = "This action cannot be undone.",
   confirmText = "Confirm",
   cancelText = "Cancel",
   onConfirm = () => {},
+  open,           // ADD: controlled open
+  setOpen,        // ADD: setter
 }) {
-  return (
-    <AlertDialog>
-      {/* What opens the dialog */}
-      <AlertDialogTrigger asChild>
-        {trigger}
-      </AlertDialogTrigger>
+  const controlled = open !== undefined;
 
-      {/* Dialog UI */}
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      {trigger && (
+        <AlertDialogTrigger asChild>
+          {trigger}
+        </AlertDialogTrigger>
+      )}
+
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -38,7 +43,10 @@ export default function ConfirmDialog({
           <AlertDialogCancel>{cancelText}</AlertDialogCancel>
 
           <AlertDialogAction
-            onClick={onConfirm}
+            onClick={() => {
+              onConfirm();
+              if (controlled) setOpen(false);
+            }}
           >
             {confirmText}
           </AlertDialogAction>
