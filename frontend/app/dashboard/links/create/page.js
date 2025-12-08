@@ -1,6 +1,6 @@
 'use client';
 import { use, useState,useEffect } from 'react';
-import { ChevronUp, ChevronDown,X, BarChart3, Copy, Check } from 'lucide-react';
+import { ChevronUp, ChevronDown,X, BarChart3, Copy, Check, QrCode } from 'lucide-react';
 import ConfirmDialog from '@/components/confirm-dialog';
 import useApi from '@/hooks/useApi';
 
@@ -14,7 +14,7 @@ function parseTitleFromUrl(url) {
   }
 }
 
-function LinkReadyModal({ isOpen, onClose, shortLink = 'urlsnap.in/r/44GwO8m' }) {
+function LinkReadyModal({ isOpen, onClose, shortLink = 'urlsnap.in/r/something' ,id}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopyLink = () => {
@@ -24,7 +24,11 @@ function LinkReadyModal({ isOpen, onClose, shortLink = 'urlsnap.in/r/44GwO8m' })
   };
 
   const handleViewDetails = () => {
-    console.log('View link details');
+    if (id){
+    window.location.href = '/dashboard/' + id;
+    } else {
+      alert('Something went wrong: Link ID not provided');
+    }
   };
 
   const handleCreateAnother = () => {
@@ -72,14 +76,14 @@ function LinkReadyModal({ isOpen, onClose, shortLink = 'urlsnap.in/r/44GwO8m' })
             <div className="flex justify-center gap-3">
               <button
                 onClick={handleViewDetails}
-                className="flex items-center gap-2 px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-md font-medium hover:bg-blue-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 border-2 border-blue-600 text-blue-600 rounded-md font-medium hover:bg-blue-100 transition-colors cursor-pointer"
               >
                 <BarChart3 className="w-4 h-4" />
                 View link details
               </button>
               <button
                 onClick={handleCopyLink}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors cursor-pointer"
               >
                 {copied ? (
                   <>
@@ -102,7 +106,7 @@ function LinkReadyModal({ isOpen, onClose, shortLink = 'urlsnap.in/r/44GwO8m' })
           <span>On a roll? Don't stop now!</span>
           <button
             onClick={handleCreateAnother}
-            className="text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1"
+            className="text-blue-600 hover:text-blue-700 font-medium inline-flex items-center gap-1 cursor-pointer"
           >
             Create another link
             <span>→</span>
@@ -129,14 +133,6 @@ export default function LinkCreator() {
 
   const handleSubmit = async () => {
     setLoading(true)
-    
-    console.log({
-      destinationUrl,
-      shortLink,
-      title,
-      generateQR,
-      addToBitly
-    });
 
     if (!destinationUrl) {
       setError("Destination URL is required.");
@@ -151,11 +147,11 @@ export default function LinkCreator() {
     }
 
     const res = await createApiUrl.request(payload);
-    console.log(res);
+
     console.log(createApiUrl.error);
     setError(createApiUrl.error);
     setLoading(createApiUrl.loading);
-    if (!createApiUrl.error) {
+    if (!createApiUrl.error || res) {
       setModalOpen(true);
     }
 
@@ -176,8 +172,14 @@ export default function LinkCreator() {
     <div className="min-h-screen bg-gray-50 p-8">
       <LinkReadyModal
         isOpen={modelopen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false)
+          setDestinationUrl('');
+          setShortLink('');
+          setTitle('');
+        }}
         shortLink={shortLink ? `urlsnap.in/${shortLink}` : 'bit.ly/44GwO8m'}
+        id={createApiUrl?.data?.data?.id}
       />
       <div className="max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-8">
@@ -236,7 +238,7 @@ export default function LinkCreator() {
                   Short link
                 </label>
                 <div className="flex gap-2">
-                    <span className="px-3 py-2 w-1/2 border border-gray-300 rounded-md text-gray-700">snapurl.io</span>
+                    <span className="px-3 py-2 w-1/2 border border-gray-300 rounded-md text-gray-700">urlsnap.in/r/</span>
                   <span className="flex items-center text-gray-500">/</span>
                   <input
                     type="text"
@@ -278,15 +280,11 @@ export default function LinkCreator() {
             <div className="px-6 pb-6 space-y-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
-                    <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm4 4a1 1 0 011-1h8a1 1 0 110 2H8a1 1 0 01-1-1zm0 4a1 1 0 011-1h8a1 1 0 110 2H8a1 1 0 01-1-1zm0 4a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" />
-                    </svg>
-                  </div>
+                    <QrCode className="w-6 h-6 rounded flex items-center justify-center" />
                   <span className="font-medium text-gray-900">Generate a QR Code</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">2 left</span>
+                  <span className="text-xs text-gray-500">Not available at the moment</span>
                   <ConfirmDialog
                     trigger={<button
                     onClick={() => setGenerateQR(!generateQR)}
@@ -311,28 +309,6 @@ export default function LinkCreator() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-100 rounded flex items-center justify-center">
-                    <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <span className="font-medium text-gray-900">Add to a Bitly Page</span>
-                </div>
-                <button
-                  onClick={() => setAddToBitly(!addToBitly)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    addToBitly ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      addToBitly ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
             </div>
           )}
         </div>

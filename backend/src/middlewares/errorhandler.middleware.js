@@ -4,7 +4,7 @@ function formatStack(err) {
   if (!err.stack) return err;
 
   const cwd = process.cwd().replace(/\\/g, "/");
-
+  console.log("CWD for stack filtering:", cwd);
   // split stack lines
   const lines = err.stack.split("\n");
 
@@ -29,8 +29,8 @@ function formatStack(err) {
 
 
 export function errorHandler(err, req, res, next) {
-  console.error("GLOBAL ERROR:", err.message);
-
+  console.error("GLOBAL ERROR:", err.message || err);
+  console.error(formatStack(err.stack));
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
       success: false,

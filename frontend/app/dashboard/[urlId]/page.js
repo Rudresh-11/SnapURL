@@ -9,6 +9,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { DropdownMenuDemo } from '@/components/dropdown';
 import ConfirmDialog from '@/components/confirm-dialog';
+import AlertDemo from "@/components/alertdialog";
+
 export default function LinkAnalytics() {
 
   function normalizeData(apiDaily) {
@@ -73,6 +75,8 @@ export default function LinkAnalytics() {
 
   const [isCopied, setIsCopied] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [alert, setAlert] = useState(false)
+  const deleteApi = useApi(`/url/delete/${urlId}`, { auto: false, method: "DELETE" });
   const overviewApi = useApi(`/analytics/${urlId}/overview`, { auto: true, method: "GET" });
   const overviewData = overviewApi.data?.data?.overview;
 
@@ -94,8 +98,17 @@ export default function LinkAnalytics() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleDelete = async (id) => {
-    alert("Delete functionality is not implemented yet.");
+  const handleDelete = async () => {
+    const response = await deleteApi.request();
+    if (!response) {
+      setAlert({
+        type: "error",
+        message: "Error deleting link",
+        description: deleteApi?.error || "An unexpected error occurred.",
+    });
+      return;
+    }
+    window.location.href = '/dashboard/links';
   };
 
   if (overviewApi.loading) {
@@ -103,6 +116,9 @@ export default function LinkAnalytics() {
   }
   return (
     <div className="min-h-screen bg-gray-50">
+      {alert && (
+        <AlertDemo {...alert} />
+      )}
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -165,7 +181,7 @@ export default function LinkAnalytics() {
                     {
                       label: "Delete",
                       icon: <Trash className="w-4 h-4 text-red-500" />,
-                      onClick: () => {setShowConfirm(true);},
+                      onClick: () => { setShowConfirm(true); },
                     },
                   ]}
                 />
