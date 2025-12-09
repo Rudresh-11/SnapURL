@@ -11,9 +11,7 @@ import geoip from "geoip-lite";
 export const redirectUrl = async (req, res) => {
     try {
         const shortCode = req.params.shortCode;
-        if (!shortCode) {
-            throw new ApiError(400, "Shortcode is required");
-        }
+        if (!shortCode) throw new ApiError(400, "Shortcode is required");
         const url = await UrlModel.getUrlByShortCode(shortCode);
         if (!url) {
             throw new ApiError(404, "URL not found");
@@ -30,7 +28,8 @@ export const redirectUrl = async (req, res) => {
         
         const userAgent = req.headers["user-agent"] || "Unknown";
 
-        const referrer = req.headers["referer"] || req.headers["referrer"] || "Direct";
+        // const referrer = req.headers["referer"] || req.headers["referrer"] || "Direct";
+            let referrer = req?.query?.ref || "Direct";
 
 
 
@@ -41,12 +40,13 @@ export const redirectUrl = async (req, res) => {
                 : "Desktop";
 
         let country = req.headers["cf-ipcountry"];
-        countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
+        // countries.registerLocale(import("i18n-iso-countries/langs/en.json"));
 
         if (!country || country.length !== 2) {
               const geo = geoip.lookup(ip);
-              country = geo?.country || "Unknown";
-              country = countries.getName(code, "en") || "Unknown";
+              const country_code = geo?.country || "Unknown";
+              country = countries.getName(country_code, "en") || "Unknown";
+              
         }
         
         await ClickModel.recordClick(url.id, ip, country, deviceType, referrer);

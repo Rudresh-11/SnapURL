@@ -19,6 +19,7 @@ export const createUrl = async (req, res) => {
             throw new ApiError(409, ` /${customAlias} is already taken. Please choose another one. (leave blank for random)`);
         }
         shortCode = customAlias;
+        if (shortCode==="api") throw new ApiError(403, "You cant name api as custom back half");
     } else {
         shortCode = generateShortCode(6);
         let existingUrl = await UrlModel.getUrlByShortCode(shortCode);

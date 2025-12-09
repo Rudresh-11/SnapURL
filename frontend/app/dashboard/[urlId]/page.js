@@ -11,6 +11,7 @@ import { DropdownMenuDemo } from '@/components/dropdown';
 import ConfirmDialog from '@/components/confirm-dialog';
 import AlertDemo from "@/components/alertdialog";
 import { ClicksTable } from '@/components/analytics/datatable';
+import { formatIST } from '@/lib/timeconverter';
 
 
 const ShareLinkModal = ({ link = "bit.ly/44GwO8m", onClose }) => {
@@ -252,13 +253,7 @@ export default function LinkAnalytics() {
   function formatDate(d) {
     const date = new Date(d);
 
-    const formatted = date.toLocaleString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const formatted = formatIST(date)
 
     const offset = -date.getTimezoneOffset();
     const sign = offset >= 0 ? "+" : "-";
@@ -294,7 +289,7 @@ export default function LinkAnalytics() {
   const myreferrersData = overviewData.referrers;
   const devicesData = overviewData.devices;
 
-  console.log(clicksData)
+  // console.log(clicksData)
 
 
   const handleCopy = () => {

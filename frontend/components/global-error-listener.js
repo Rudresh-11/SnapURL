@@ -15,7 +15,6 @@ export default function GlobalErrorListener() {
   }, [error]);
 
   if (!error) return null;
-  console.log("Global err called",error)
   return (
     <ToastAlert
       type="destructive"

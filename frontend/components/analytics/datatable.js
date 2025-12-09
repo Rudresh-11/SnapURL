@@ -7,6 +7,7 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  sortingFns,
   useReactTable,
 } from "@tanstack/react-table";
 
@@ -30,15 +31,14 @@ import {
   TableRow,
   TableHead,
 } from "@/components/ui/table";
-
-import { AlertDialog } from "../ui/alert-dialog";
+import { formatIST } from "@/lib/timeconverter";
 
 export function ClicksTable({ data = [] }) {
   // ----------------------------------------------------------------
   // 1️⃣ LOCAL STATE
   // ----------------------------------------------------------------
   const [globalFilter, setGlobalFilter] = React.useState(""); // global search
-  const [sorting, setSorting] = React.useState([]);
+  const [sorting, setSorting] = React.useState([{ id: "clicked_at", desc: true }]);
   const [filters, setFilters] = React.useState([]);
   const [visibility, setVisibility] = React.useState({});
   const [rowSelection, setRowSelection] = React.useState({});
@@ -48,12 +48,12 @@ export function ClicksTable({ data = [] }) {
   // ----------------------------------------------------------------
   const columns = [
     // SERIAL NO
-{
-  id: "sr_no",
-  header: "Sr No",
-  cell: ({ row }) => Number(row.id) + 1,
-  enableSorting: false,
-},
+    {
+      id: "sr_no",
+      header: "Sr No",
+      cell: ({ row }) => Number(row.id) + 1,
+      enableSorting: false,
+    },
 
     // SELECTION CHECKBOX
     {
@@ -88,6 +88,11 @@ export function ClicksTable({ data = [] }) {
 
     {
       accessorKey: "referrer",
+      header: "Referrer",
+    },
+
+    {
+      accessorKey: "clicked_at",
       header: ({ column }) => (
         <Button
           variant="ghost"
@@ -95,16 +100,14 @@ export function ClicksTable({ data = [] }) {
             column.toggleSorting(column.getIsSorted() === "asc")
           }
         >
-          Referrer <ArrowUpDown className="w-4 h-4 ml-1" />
+          Clicked at <ArrowUpDown className="w-4 h-4 ml-1" />
         </Button>
       ),
-    },
-
-    {
-      accessorKey: "clicked_at",
-      header: "Clicked At",
-      cell: ({ row }) =>
-        new Date(row.getValue("clicked_at")).toLocaleString(),
+      cell: ({ row }) => {
+        const raw = row.getValue("clicked_at"); // original date string
+        return formatIST(raw);
+      },
+      enableSorting:true,
     },
 
     // ACTIONS MENU
