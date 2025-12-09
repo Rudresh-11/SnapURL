@@ -1,5 +1,4 @@
 import axios from "axios";
-import { handleApiError } from "./apiErrorHandler";
 
 // Create axios instance
 const api = axios.create({
@@ -25,13 +24,12 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     // Backend error message
-    const msg = error.response?.data?.message;
+    const msg = error.response?.data?.message || error.message;
     if (msg) {
       console.error("API Error:", msg);
     }
-    // if (!error.config?._skipErrorToast) {
-    //   handleApiError(error);
-    // }
+    const { useErrorStore } = await import("@/store/useErrorStore.js");
+    useErrorStore.getState().setError(msg);
     // You can later add refresh token handling here (important for production)
     // if (error.response?.status === 401) {
     //   // Attempt refresh token here...

@@ -8,7 +8,7 @@ export default function ToastAlert({
   type = "success",
   message = "Request successful",
   description = "Request has been processed successfully",
-  duration = 3000, // auto hide
+  duration = 5000, // auto hide
 }) {
   const [visible, setVisible] = useState(true);
 

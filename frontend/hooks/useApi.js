@@ -26,7 +26,7 @@ export default function useApi(
         setData(res.data);
         return res.data;
       } catch (err) {
-        const msg = err.response?.data?.message || "API Error";
+        const msg = err.response?.data?.message || err.message || "API Error";
         setError(msg);
         return null;
       } finally {
