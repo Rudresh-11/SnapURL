@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import Link from "next/link";
-import api from "@/lib/api"; 
 import { useRouter } from "next/navigation";
 import useApi from "@/hooks/useApi";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback,useEffect } from "react";
 import api from "@/lib/api";
 
 export default function useApi(
@@ -37,14 +37,10 @@ export default function useApi(
   );
 
   // auto-fetch on mount
-  useState(() => {
-    if (auto){
-      (async() => {
-        await request();
-      })();
-
-    }
-  });
+useEffect(() => {
+  if (!auto) return; // wait for token
+  request();
+}, [auto]);
 
   return {
     data,

@@ -4,7 +4,7 @@ class ApiResponse {
         this.data = data
         this.message = message
         this.success = statusCode < 400
-        console.log(`API Response - Status: ${statusCode}, Message: ${message}`);
+        // console.log(`API Response - Status: ${statusCode}, Message: ${message}`);
     }
 }
 
