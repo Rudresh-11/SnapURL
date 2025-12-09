@@ -25,6 +25,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "geoip-lite": "^1.4.10",
+    "i18n-iso-countries": "^7.14.0",
     "jsonwebtoken": "^9.0.2",
     "link-preview-js": "^4.0.0",
     "pg": "^8.16.3",
