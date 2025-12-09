@@ -2,6 +2,7 @@ import { UrlModel } from "../models/url.model.js";
 import { ClickModel } from "../models/click.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import countries from "i18n-iso-countries";
 import geoip from "geoip-lite";
 
 
@@ -29,7 +30,7 @@ export const redirectUrl = async (req, res) => {
         
         const userAgent = req.headers["user-agent"] || "Unknown";
 
-        const referrer = req.headers["referer"] || req.headers["referrer"] || null;
+        const referrer = req.headers["referer"] || req.headers["referrer"] || "Direct";
 
 
 
@@ -40,10 +41,12 @@ export const redirectUrl = async (req, res) => {
                 : "Desktop";
 
         let country = req.headers["cf-ipcountry"];
+        countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
 
         if (!country || country.length !== 2) {
               const geo = geoip.lookup(ip);
               country = geo?.country || "Unknown";
+              country = countries.getName(code, "en") || "Unknown";
         }
         
         await ClickModel.recordClick(url.id, ip, country, deviceType, referrer);
