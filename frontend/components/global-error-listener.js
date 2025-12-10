@@ -5,7 +5,7 @@ import { useErrorStore } from "@/store/useErrorStore";
 import ToastAlert from "@/components/alertdialog.js";
 
 export default function GlobalErrorListener() {
-  const { error, clearError } = useErrorStore();
+  let { error, clearError } = useErrorStore();
 
   useEffect(() => {
     if (!error) return;
@@ -15,6 +15,9 @@ export default function GlobalErrorListener() {
   }, [error]);
 
   if (!error) return null;
+  if (error==="timeout of 10000ms exceeded"){
+    error = "Our backend server is Starting up Please wait upto 7-8 seconds then try again"
+  }
   return (
     <ToastAlert
       type="destructive"

@@ -6,35 +6,54 @@ import { fetchMetadata } from "../utils/fetchMeta.js";
 
 // Create a new shortened URL
 export const createUrl = async (req, res) => {
-    const userId = req.user.id;
-    const { originalUrl, customAlias, expiresAt } = req.body;
-    if (!originalUrl) {
-        throw new ApiError(400, "Original URL is required");
-    }
-    let shortCode;
+  const userId = req.user.id;
+  const { originalUrl, customAlias, expiresAt } = req.body;
+  if (!originalUrl) {
+    throw new ApiError(400, "Original URL is required");
+  }
+  let shortCode;
 
-    if (customAlias) {
-        const existingUrl = await UrlModel.getUrlByShortCode(customAlias);
-        if (existingUrl) {
-            throw new ApiError(409, ` /${customAlias} is already taken. Please choose another one. (leave blank for random)`);
-        }
-        shortCode = customAlias;
-        if (shortCode==="api") throw new ApiError(403, "You cant name api as custom back half");
-    } else {
-        shortCode = generateShortCode(6);
-        let existingUrl = await UrlModel.getUrlByShortCode(shortCode);
-        while (existingUrl) {
-            shortCode = generateShortCode(6);
-            existingUrl = await UrlModel.getUrlByShortCode(shortCode);
-        }
+  if (customAlias) {
+    const existingUrl = await UrlModel.getUrlByShortCode(customAlias);
+    if (existingUrl) {
+      throw new ApiError(409, ` /${customAlias} is already taken. Please choose another one. (leave blank for random)`);
     }
+    shortCode = customAlias;
+    if (shortCode === "api") throw new ApiError(403, "You cant name api as custom back half");
+  } else {
+    shortCode = generateShortCode(6);
+    let existingUrl = await UrlModel.getUrlByShortCode(shortCode);
+    while (existingUrl) {
+      shortCode = generateShortCode(6);
+      existingUrl = await UrlModel.getUrlByShortCode(shortCode);
+    }
+  }
 
-    const newUrl = await UrlModel.createUrl(userId, originalUrl, shortCode, customAlias, expiresAt);
-    return res.status(201).json(
-      new ApiResponse(201, newUrl, "Short URL created successfully")
-    );
+  const newUrl = await UrlModel.createUrl(userId, originalUrl, shortCode, customAlias, expiresAt);
+  return res.status(201).json(
+    new ApiResponse(201, newUrl, "Short URL created successfully")
+  );
 };
 
+// Create a demo shorturl
+export const createDemoUrl = async (req, res) => {
+  const { originalUrl, customAlias, expiresAt } = req.body;
+  if (!originalUrl) {
+    throw new ApiError(400, "Original URL is required");
+  }
+  let shortCode;
+  shortCode = generateShortCode(6);
+  let existingUrl = await UrlModel.getUrlByShortCode(shortCode);
+  while (existingUrl) {
+    shortCode = generateShortCode(6);
+    existingUrl = await UrlModel.getUrlByShortCode(shortCode);
+  }
+
+  const newUrl = await UrlModel.createUrl(null, originalUrl, shortCode, customAlias, expiresAt);
+  return res.status(201).json(
+    new ApiResponse(201, newUrl, "Short URL created successfully")
+  );
+};
 // Get all URLs for the authenticated user  
 export const getUserUrls = async (req, res) => {
   try {

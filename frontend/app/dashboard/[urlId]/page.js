@@ -14,7 +14,7 @@ import { ClicksTable } from '@/components/analytics/datatable';
 import { formatIST } from '@/lib/timeconverter';
 
 
-const ShareLinkModal = ({ link = "bit.ly/44GwO8m", onClose }) => {
+const ShareLinkModal = ({ link = "", onClose }) => {
   const [copied, setCopied] = useState(false);
 
   const platforms = [
@@ -41,7 +41,7 @@ const ShareLinkModal = ({ link = "bit.ly/44GwO8m", onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Share your Bitly Link</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Share your Snapurl Link</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"

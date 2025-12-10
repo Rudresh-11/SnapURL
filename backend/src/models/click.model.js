@@ -105,6 +105,20 @@ export const ClickModel = {
     const values = [urlId];
     const result = await db.query(query, values);
     return result.rows;
+  },
+  
+  async getGlobalStats() {
+    const db = getDB();
+
+    const query = `
+      SELECT
+        (SELECT COUNT(*) FROM users) AS total_users,
+        (SELECT COUNT(*) FROM urls) AS total_urls,
+        (SELECT COUNT(*) FROM clicks) AS total_clicks;
+    `;
+
+    const result = await db.query(query);
+    return result.rows[0];
   }
 
 };
