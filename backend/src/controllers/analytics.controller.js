@@ -4,17 +4,15 @@ import { ClickModel } from "../models/click.model.js";
 import { UrlModel } from "../models/url.model.js";
 
 export const getClicksByUrl = async (req, res, next) => {
-    try {
         const urlId = req.params.id;
         const url = await UrlModel.getUrlById(urlId);
         if (!url) {
             throw new ApiError(404, "URL not found");
         }
+        try {
         const clicks = await ClickModel.getTotalClicksByUrl(urlId);
         return res.status(200).json(new ApiResponse(200, { clicks }, "Clicks retrieved successfully"));
     } catch (error) {
-        console.log(error);
-        
         throw new ApiError(500, "Failed to retrieve clicks", [error]);
         next(error);
     }

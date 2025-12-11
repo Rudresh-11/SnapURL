@@ -274,15 +274,21 @@ export default function LinkAnalytics() {
   const overviewData = overviewApi.data?.data?.overview;
   const clicksApi = useApi(`/analytics/${urlId}/allclicks`, { auto: true, method: "GET" });
   const clicksData = clicksApi.data?.data?.clicks
+  
+  if (overviewApi.error){
+    return <div>Url not found in database</div>
+  }
+  
   if (overviewApi.loading || !overviewData) {
     return <SkeletonLoader />;
   }
 
   if (clicksApi.loading || !clicksData) {
     return <div>Loading</div>;
-
   }
-
+  console.log("hummjsfgvsjhbvsdhbfsdjfb.jkshdf.jrhgbf.ksjdgb.jgbhfd");
+  
+  console.log("Error ",overviewApi.error)
   const totalClicks = overviewData.summary.total_clicks;
   const rawData = normalizeData(overviewData.daily);
   const locationData = formatLocationData(overviewData.countries);
@@ -314,7 +320,7 @@ export default function LinkAnalytics() {
   return (
     <div className="min-h-screen bg-gray-50">
       {alert && (<AlertDemo {...alert} />)}
-      {isShare && (<ShareLinkModal link={`https://${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`} onClose={() => { setIsShare(false) }} />)}
+      {isShare && (<ShareLinkModal link={`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`} onClose={() => { setIsShare(false) }} />)}
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -334,12 +340,12 @@ export default function LinkAnalytics() {
                 </h1>
                 <div className="flex items-center gap-2 mb-2">
                   <a
-                    href={`https://${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
+                    href={`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    {`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
+                    {`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`.replace("https://","")}
                   </a>
                   <button onClick={handleCopy} className="text-gray-400 hover:text-blue-600 cursor-pointer">
                     {isCopied ? <Check className="w-4 h-4 " /> : <Copy className="w-4 h-4" />}

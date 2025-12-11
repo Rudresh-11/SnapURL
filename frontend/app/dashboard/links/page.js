@@ -14,11 +14,10 @@ import {
   Share2,
   BarChart2,
   MoreHorizontal,
-  List,
-  Columns,
-  Grid,
   Copy,
   ExternalLink,
+   Plus, 
+   Link2 
 } from "lucide-react";
 import ConfirmDialog from "@/components/confirm-dialog";
 import useApi from "@/hooks/useApi";
@@ -80,11 +79,67 @@ function LinkCardSkeleton() {
   );
 }
 
+function NoLinksComponent(){
+  return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-8">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+          {/* Vector Art Illustration */}
+          <div className="mb-6 relative">
+            <svg viewBox="0 0 200 200" className="w-full h-48 mx-auto">
+              {/* Background circles */}
+              <circle cx="100" cy="100" r="80" fill="#EEF2FF" opacity="0.5"/>
+              <circle cx="100" cy="100" r="60" fill="#DDD6FE" opacity="0.3"/>
+              
+              {/* Chain links */}
+              <g transform="translate(60, 80)">
+                <ellipse cx="20" cy="20" rx="15" ry="20" fill="none" stroke="#6366F1" strokeWidth="4" strokeDasharray="3,3" opacity="0.4"/>
+                <ellipse cx="45" cy="20" rx="15" ry="20" fill="none" stroke="#6366F1" strokeWidth="4" strokeDasharray="3,3" opacity="0.4"/>
+              </g>
+              
+              {/* Center plus icon */}
+              <circle cx="100" cy="100" r="25" fill="#6366F1"/>
+              <line x1="100" y1="85" x2="100" y2="115" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+              <line x1="85" y1="100" x2="115" y2="100" stroke="white" strokeWidth="4" strokeLinecap="round"/>
+              
+              {/* Decorative dots */}
+              <circle cx="40" cy="60" r="4" fill="#A5B4FC" opacity="0.6"/>
+              <circle cx="160" cy="70" r="3" fill="#A5B4FC" opacity="0.6"/>
+              <circle cx="50" cy="140" r="5" fill="#C7D2FE" opacity="0.6"/>
+              <circle cx="150" cy="130" r="4" fill="#C7D2FE" opacity="0.6"/>
+            </svg>
+          </div>
 
+          {/* Text Content */}
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              No Links Yet
+            </h2>
+            <p className="text-gray-600">
+              Start building your collection by creating your first link
+            </p>
+          </div>
 
-export default function BitlyLinksPage() {
+          {/* Create First Link Button */}
+          <button 
+            onClick={() => window.location.href = "/dashboard/links/create"}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+          >
+            <Plus size={20} />
+            Create Your First Link
+          </button>
+
+          {/* Optional secondary text */}
+          <p className="text-center text-sm text-gray-500 mt-4">
+            It only takes a few seconds
+          </p>
+        </div>
+      </div>
+    )
+}
+
+export default function LinksPage() {
   const [viewMode, setViewMode] = useState("list");
-  const [links, setLinks] = useState([]);
+  const [links, setLinks] = useState(["some","links"]);
   const [selectedLinks, setSelectedLinks] = useState([]);
   const [alert, setAlert] = useState(null);
 
@@ -147,39 +202,48 @@ export default function BitlyLinksPage() {
     }
   }
 
-const handleDeleteLinks = async () => {
+  const handleDeleteLinks = async () => {
 
-  // React has prblem w
-  let hasError = false;
+    // React has prblem w
+    let hasError = false;
 
-  for (const linkId of selectedLinks) {
-    const res = await deleteRequest(null, `/url/delete/${linkId}`, "DELETE");
+    for (const linkId of selectedLinks) {
+      const res = await deleteRequest(null, `/url/delete/${linkId}`, "DELETE");
 
-    if (!res) {
-      hasError = true;
+      if (!res) {
+        hasError = true;
+      }
     }
-  }
 
-  if (hasError) {
+    if (hasError) {
+      setAlert({
+        type: "error",
+        message: "Error deleting links",
+        description: "One or more links failed to delete.",
+      });
+      return;
+    }
+
+    setLinks(links.filter(link => !selectedLinks.includes(link.id)));
     setAlert({
-      type: "error",
-      message: "Error deleting links",
-      description: "One or more links failed to delete.",
+      type: "success",
+      message: "Links deleted",
+      description: `${selectedLinks.length} link(s) removed successfully`,
     });
-    return;
-  }
 
-  setLinks(links.filter(link => !selectedLinks.includes(link.id)));
-  setAlert({
-    type: "success",
-    message: "Links deleted",
-    description: `${selectedLinks.length} link(s) removed successfully`,
-  });
-
-  setSelectedLinks([]);
-};
+    setSelectedLinks([]);
+  };
 
 
+
+  if (links.length === 0) {
+    return <>
+    <NoLinksComponent/>
+    </>;
+  };
+
+
+  {/* Main content */}  
   return (
     <div className="min-h-screen bg-gray-50">
 

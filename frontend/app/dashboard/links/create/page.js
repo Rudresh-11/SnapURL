@@ -64,12 +64,12 @@ function LinkReadyModal({ isOpen, onClose, shortLink = 'urlsnap.in/r/something' 
           <div className="bg-blue-50 rounded-lg p-6">
             <div className="text-center mb-4">
               <a
-                href={`https://${shortLink}`}
+                href={`${shortLink}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xl font-medium text-blue-600 hover:text-blue-700"
               >
-                {shortLink}
+                {shortLink.replace("https://" ,"")}
               </a>
             </div>
 
@@ -131,14 +131,27 @@ export default function LinkCreator() {
 
   const createApiUrl = useApi('/url/shorten',{method: 'POST'});
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
     setLoading(true)
-
+    if (shortLink.includes(" "))
+    {
+      setError("Back half must not contain space");
+      setLoading(false);
+      return;
+    }
+    if (shortLink.length >= 7)
+    {
+      setError("Back half must be less that 7 characters");
+      setLoading(false);
+      return;
+    }
     if (!destinationUrl) {
       setError("Destination URL is required.");
       setLoading(false);
       return;
     }
+
     // Here you would typically send the data to your backend API
     const payload = {
       originalUrl: destinationUrl,
@@ -149,11 +162,13 @@ export default function LinkCreator() {
     const res = await createApiUrl.request(payload);
 
     console.log(createApiUrl.error);
-    setError(createApiUrl.error);
-    setLoading(createApiUrl.loading);
-    if (!createApiUrl.error || res) {
-      setModalOpen(true);
+    if (createApiUrl.error || !res) {
+      setError(createApiUrl.error || "Some error occured while creating link");
+      setLoading(createApiUrl.loading);
+      return
     }
+    setLoading(createApiUrl.loading);
+    setModalOpen(true);
 
   };
 
@@ -178,7 +193,7 @@ export default function LinkCreator() {
           setShortLink('');
           setTitle('');
         }}
-        shortLink={shortLink ? `urlsnap.in/${shortLink}` : 'bit.ly/44GwO8m'}
+        shortLink={shortLink ? `${process.env.NEXT_PUBLIC_BASE_URL}/${shortLink}` : 'bit.ly/44GwO8m'}
         id={createApiUrl?.data?.data?.id}
       />
       <div className="max-w-3xl mx-auto">
@@ -327,7 +342,7 @@ export default function LinkCreator() {
           </button>
         ) : (
           <button
-            onClick={handleSubmit}
+            onClick={(e)=>handleSubmit(e)}
             className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors"
           >
             Create Link
