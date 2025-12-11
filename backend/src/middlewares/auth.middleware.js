@@ -18,7 +18,6 @@ export const verifyJWT = async (req, res, next) => {
         const user = await UserModel.getUserByEmail(decodedToken.email);
     
         if (!user) {
-            
             throw new ApiError(401, "Invalid Access Token")
         }
     

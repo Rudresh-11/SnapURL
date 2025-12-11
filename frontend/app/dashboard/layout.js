@@ -16,10 +16,7 @@ export default function DashboardLayout({ children }) {
         <div className="flex flex-col flex-1 min-w-0">
 
           {/* TOP NAVBAR */}
-          <DashboardTopbar 
-            userName="User"
-            userAvatar={null}
-          />
+          <DashboardTopbar />
 
           {/* PAGE CONTENT */}
           <main className="flex-1 overflow-y-auto bg-gray-50 p-6 w-full">
