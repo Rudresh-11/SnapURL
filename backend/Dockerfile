@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 5000
 
 # STEP 7: Start the server
-CMD ["npm", "start",]
+CMD ["npm", "start"]
