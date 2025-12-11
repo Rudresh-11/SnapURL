@@ -10,7 +10,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node ./scripts/migrate.js && node index.js",
     "dev": "node --watch index.js",
     "migrate": "node ./scripts/migrate.js",
     "seed": "node ./scripts/seed.js",
@@ -25,6 +25,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "geoip-lite": "^1.4.10",
+    "google-auth-library": "^10.5.0",
     "i18n-iso-countries": "^7.14.0",
     "jsonwebtoken": "^9.0.2",
     "link-preview-js": "^4.0.0",

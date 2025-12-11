@@ -12,6 +12,17 @@ export const UserModel = {
     const result = await db.query(query, values);
     return result.rows[0];
   },
+  async createGoogleUser({ username, email, googleId, provider }) {
+    const db = getDB();
+    const query = `
+    INSERT INTO users (username, email, provider, google_id)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, username, email, provider, google_id, created_at;
+  `;
+    const values = [username, email, provider, googleId];
+    const result = await db.query(query, values);
+    return result.rows[0];
+  },
 
   async getUserByUsername(username) {
     const db = getDB();
@@ -19,7 +30,7 @@ export const UserModel = {
     const result = await db.query(query, [username]);
     return result.rows[0];
   },
-  
+
   async getUserByEmail(email) {
     const db = getDB();
     const query = `SELECT * FROM users WHERE email = $1;`;

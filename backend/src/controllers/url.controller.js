@@ -56,8 +56,9 @@ export const createDemoUrl = async (req, res) => {
 };
 // Get all URLs for the authenticated user  
 export const getUserUrls = async (req, res) => {
+  // TODO: get url from local strorage
+  const userId = req.user.id;
   try {
-    const userId = req.user.id;
     const urls = await UrlModel.getUrlsByUser(userId);
     return res.status(200).json(
       new ApiResponse(200, urls, "User URLs fetched successfully")

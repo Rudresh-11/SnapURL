@@ -29,7 +29,8 @@ function formatStack(err) {
 
 
 export function errorHandler(err, req, res, next) {
-  console.error("GLOBAL ERROR:", err.message || err);
+  console.error("GLOBAL ERROR: ", err.message || err);
+  console.log("Stack: ",err.stack)
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
       success: false,

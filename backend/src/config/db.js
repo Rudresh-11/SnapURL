@@ -34,7 +34,7 @@ export default async function connectDB() {
   return pool;
 }
 
-export function getDB() {
+export async function getDB() {
   if (!pool) throw new Error("Database not initialized");
   return pool;
 }
