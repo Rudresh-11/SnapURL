@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 
 const items = [
-    { title: "Home", url: "/dashboard", icon: Home },
     { title: "Links", url: "/dashboard/links", icon: Link2 },
     { title: "QR Codes", url: "/dashboard/qr", icon: QrCode },
     { title: "Analytics", url: "/dashboard/analytics", icon: BarChart3 },
