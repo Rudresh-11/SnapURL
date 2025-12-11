@@ -18,18 +18,18 @@ export const redirectUrl = async (req, res) => {
         }
         await UrlModel.incrementClick(shortCode);
 
-        const ip = 
-        req.headers['cf-connecting-ip'] ||  
-        req.headers['x-real-ip'] ||
-        req.headers['x-forwarded-for'] ||
-        req.socket.remoteAddress || '';
+        const ip =
+            req.headers['cf-connecting-ip'] ||
+            req.headers['x-real-ip'] ||
+            req.headers['x-forwarded-for'] ||
+            req.socket.remoteAddress || '';
 
         console.log("Visitor IP:", ip);
-        
+
         const userAgent = req.headers["user-agent"] || "Unknown";
 
         // const referrer = req.headers["referer"] || req.headers["referrer"] || "Direct";
-            let referrer = req?.query?.ref || "Direct";
+        let referrer = req?.query?.ref || "Direct";
 
 
 
@@ -43,12 +43,11 @@ export const redirectUrl = async (req, res) => {
         // countries.registerLocale(import("i18n-iso-countries/langs/en.json"));
 
         if (!country || country.length !== 2) {
-              const geo = geoip.lookup(ip);
-              const country_code = geo?.country || "Unknown";
-              country = countries.getName(country_code, "en") || "Unknown";
-              
+            const geo = geoip.lookup(ip);
+            country = geo?.country || "Unknown";
         }
-        
+        country = countries.getName(country, "en") || "Unknown";
+
         await ClickModel.recordClick(url.id, ip, country, deviceType, referrer);
 
         return res.redirect(url.original_url);
