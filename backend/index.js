@@ -1,6 +1,5 @@
-import dotenv from 'dotenv';
-dotenv.config();
-import * as logger from './src/utils/logger.js';
+import "./src/config/loadEnv.js";
+import './src/utils/logger.js';
 import app from './app.js'
 import connectDB from './src/config/db.js';
 import connectRedis from './src/config/redis.js';

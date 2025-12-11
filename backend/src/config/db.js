@@ -4,7 +4,7 @@ const { Pool } = pkg;
 let pool;
 
 export default async function connectDB() {
-  console.log("Connecting to DB with connection string:", process.env.DATABASE_URL);
+  console.log("Connecting to DB with connection string: ", process.env.DATABASE_URL);
 
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -34,7 +34,7 @@ export default async function connectDB() {
   return pool;
 }
 
-export async function getDB() {
+export function getDB() {
   if (!pool) throw new Error("Database not initialized");
   return pool;
 }

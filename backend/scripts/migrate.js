@@ -3,8 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import connectDB from "../src/config/db.js";
 import { getDB } from "../src/config/db.js";
-import dotenv from 'dotenv';
-dotenv.config();
+import "../src/config/loadEnv.js"
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

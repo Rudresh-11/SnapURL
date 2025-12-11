@@ -25,7 +25,6 @@ export default function LandingPage() {
   const statsData = statsApi.data?.data || null;
   let statsError = statsApi.error;
   const statsLoading = statsApi.loading;
-  console.log(statsData)
 
 
   const handleShorten = async () => {

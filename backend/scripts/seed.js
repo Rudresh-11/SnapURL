@@ -1,32 +1,11 @@
-import bcrypt from "bcrypt";
-import pkg from "pg";
-const { Pool } = pkg;
+import { getDB } from "../src/config/db.js";
+import connectDB from "../src/config/db.js";
+import "../src/config/loadEnv.js"
 
-let pool;
-async function getDB() {
-  pool = new Pool({
-    connectionString: "postgresql://postgres:7H)5Zi%pE7Cb25u@db.aeowpiggdrpsbwejpvnl.supabase.co:5432/postgres",
-    ssl: { rejectUnauthorized: false },
-    allowExitOnIdle: true,
-    keepAlive: true,
-    statement_timeout: 5000,
-    connectionTimeoutMillis: 5000,
-    host: undefined,
-  });
-
-  try {
-    await pool.query("SELECT NOW()");
-    console.log("PostgreSQL connected");
-  } catch (err) {
-    console.error("DB Connection error:", err);
-    throw err;
-  }
-
-  return pool;
-}
 
 async function seed() {
-  const db = await getDB();
+  await connectDB()
+  const db = getDB();
 
   console.log("🌱 Seeding database...");
 
@@ -34,14 +13,14 @@ async function seed() {
     // =======================
     // 1. CLEAR existing data
     // =======================
-    await db.query("DELETE FROM clicks;");
-    await db.query("DELETE FROM urls;");
-    await db.query("DELETE FROM users;");
+    // await db.query("DELETE FROM clicks;");
+    // await db.query("DELETE FROM urls;");
+    // await db.query("DELETE FROM users;");
 
     // =======================
     // 2. Seed Users
     // =======================
-    const passwordHash = await bcrypt.hash("password123", 10);
+    const passwordHash = "password123";
 
     const userResults = await db.query(
       `

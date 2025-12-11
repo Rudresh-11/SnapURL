@@ -1,15 +1,15 @@
 version: "3.9"
 
 services:
-  backend:
-    build: .
-    container_name: snap_backend
-    restart: always
-    ports:
-      - "5000:5000"
-    env_file: .env
-    volumes:
-      - ./:/usr/src/app
+  # backend:
+  #   build: .
+  #   container_name: snap_backend
+  #   restart: always
+  #   ports:
+  #     - "5000:5000"
+  #   env_file: .env
+  #   volumes:
+  #     - ./:/usr/src/app
 
   dbgate:
     image: dbgate/dbgate

@@ -52,7 +52,6 @@ export const getClicksByDate = async (req, res, next) => {
 
 export const getHomeStats = async (req, res, next) => {
   try {
-    // throw new ApiError(500, "Force error")
     const stats = await ClickModel.getGlobalStats();
     return res.status(200).json(
       new ApiResponse(200, stats, "Home page stats retrieved successfully")
