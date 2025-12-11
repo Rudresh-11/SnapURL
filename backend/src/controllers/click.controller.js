@@ -8,10 +8,15 @@ import geoip from "geoip-lite";
 
 
 
-export const redirectUrl = async (req, res) => {
-    try {
+export const redirectUrl = async (req, res) => {    
         const shortCode = req.params.shortCode;
         if (!shortCode) throw new ApiError(400, "Shortcode is required");
+
+        if (req.query.check === "true") {
+            const url = await UrlModel.getUrlByShortCode(shortCode);
+            if (!url) throw new ApiError(404,"Url not found");
+            return res.status(200).json(new ApiResponse(200, { exist:true }, "Url exist"));
+        }
         const url = await UrlModel.getUrlByShortCode(shortCode);
         if (!url) {
             throw new ApiError(404, "URL not found");
@@ -51,13 +56,4 @@ export const redirectUrl = async (req, res) => {
         await ClickModel.recordClick(url.id, ip, country, deviceType, referrer);
 
         return res.redirect(url.original_url);
-
-    } catch (error) {
-        console.error("Redirection error:", error);
-
-        if (error instanceof ApiError) {
-            throw error;
-        }
-        throw new ApiError(500, "Redirection failed", [error]);
-    }
 };

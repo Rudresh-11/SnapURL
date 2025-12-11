@@ -12,7 +12,7 @@ import ConfirmDialog from '@/components/confirm-dialog';
 import AlertDemo from "@/components/alertdialog";
 import { ClicksTable } from '@/components/analytics/datatable';
 import { formatIST } from '@/lib/timeconverter';
-
+import { notFound } from 'next/navigation';
 
 const ShareLinkModal = ({ link = "", onClose }) => {
   const [copied, setCopied] = useState(false);
@@ -262,8 +262,13 @@ export default function LinkAnalytics() {
 
     return `${formatted} GMT${sign}${hrs}:${mins}`;
   }
+
   const params = useParams();
   const { urlId } = params;
+
+  if (!Number.isInteger(Number(urlId)) || Number(urlId) <= 0) {
+    return notFound();
+  }
 
   const [isCopied, setIsCopied] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -274,11 +279,11 @@ export default function LinkAnalytics() {
   const overviewData = overviewApi.data?.data?.overview;
   const clicksApi = useApi(`/analytics/${urlId}/allclicks`, { auto: true, method: "GET" });
   const clicksData = clicksApi.data?.data?.clicks
-  
-  if (overviewApi.error){
+
+  if (overviewApi.error) {
     return <div>Url not found in database</div>
   }
-  
+
   if (overviewApi.loading || !overviewData) {
     return <SkeletonLoader />;
   }
@@ -287,8 +292,8 @@ export default function LinkAnalytics() {
     return <div>Loading</div>;
   }
   console.log("hummjsfgvsjhbvsdhbfsdjfb.jkshdf.jrhgbf.ksjdgb.jgbhfd");
-  
-  console.log("Error ",overviewApi.error)
+
+  console.log("Error ", overviewApi.error)
   const totalClicks = overviewData.summary.total_clicks;
   const rawData = normalizeData(overviewData.daily);
   const locationData = formatLocationData(overviewData.countries);
@@ -345,7 +350,7 @@ export default function LinkAnalytics() {
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    {`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`.replace("https://","")}
+                    {`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`.replace("https://", "")}
                   </a>
                   <button onClick={handleCopy} className="text-gray-400 hover:text-blue-600 cursor-pointer">
                     {isCopied ? <Check className="w-4 h-4 " /> : <Copy className="w-4 h-4" />}

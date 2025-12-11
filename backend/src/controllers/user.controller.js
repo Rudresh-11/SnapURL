@@ -91,7 +91,7 @@ export const loginUserWithGoogle = async (req,res) =>{
     let user = await UserModel.getUserByEmail(googleEmail);
 
     if (user) {
-      if ((user.provider === "local") || !(user.provider)) {
+      if ((user.provider === "local")) {
         throw new ApiError(
           400,
           "Email already registered with password login. Use normal login."
@@ -133,7 +133,8 @@ export const loginUser = async (req, res) => {
 
     const user = await UserModel.getUserByEmail(email);
     if (!user) throw new ApiError(401, "Invalid email or password");
-    if (user.provider || !(user.provider==="local")) throw new ApiError(401, `Login with ${user.provider} to continue`);
+    if (!(user.provider==="local")) throw new ApiError(401, `Login with ${user.provider} to continue`);
+    
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       throw new ApiError(401, "Invalid password");
