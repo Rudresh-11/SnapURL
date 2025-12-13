@@ -23,20 +23,61 @@ function generateDateRange(startDate, endDate) {
 }
 
 export function ChartBarInteractive({ data = [], title = "Clicks Summary", description = "Showing user clicks over time", height =260 }) {
+  const ranges = [
+    { key: "7", label: "Last 7 Days" },
+    { key: "30", label: "Last 30 Days" },
+    { key: "365", label: "Last 1 Year" },
+  ];
 
+  const [activeRange, setActiveRange] = React.useState("7");
 
   // STEP 1 — CLEAN + SORT
   const cleanedData = React.useMemo(() => {
-    const processed = data
+    return data
       .map((d) => ({
         date: normalizeDate(d.date),
         clicks: Number(d.clicks) || 0,
       }))
       .filter((d) => d.date !== null)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    return processed;
   }, [data]);
+
+  // STEP 2 — PAD INTO FULL DATE RANGE
+  const filteredData = React.useMemo(() => {
+    if (!cleanedData.length) return [];
+
+    const days = parseInt(activeRange, 10);
+
+    const lastDate = new Date(cleanedData.at(-1).date);
+    const start = new Date(lastDate);
+    start.setDate(lastDate.getDate() - (days - 1));
+
+    const fullDates = generateDateRange(start, lastDate);
+    const map = Object.fromEntries(cleanedData.map((d) => [d.date, d.clicks]));
+
+    return fullDates.map((date) => ({
+      date,
+      clicks: map[date] ?? 0,
+    }));
+  }, [activeRange, cleanedData]);
+
+  // STEP 3 — TOTALS
+  const totals = React.useMemo(() => {
+    if (!cleanedData.length) {
+      return { "7": 0, "30": 0, "365": 0 };
+    }
+
+    const getTotal = (rangeDays) =>
+      cleanedData
+        .slice(-Math.min(rangeDays, cleanedData.length))
+        .reduce((sum, d) => sum + d.clicks, 0);
+
+    return {
+      "7": getTotal(7),
+      "30": getTotal(30),
+      "365": getTotal(365),
+    };
+  }, [cleanedData]);
 
   if (!cleanedData.length) {
     return (
@@ -46,52 +87,6 @@ export function ChartBarInteractive({ data = [], title = "Clicks Summary", descr
       </Card>
     );
   }
-
-  const ranges = [
-    { key: "7", label: "Last 7 Days" },
-    { key: "30", label: "Last 30 Days" },
-    { key: "365", label: "Last 1 Year" },
-  ];
-
-  const [activeRange, setActiveRange] = React.useState("7");
-
-  // STEP 2 — PAD INTO FULL DATE RANGE
-  const filteredData = React.useMemo(() => {
-
-    const days = parseInt(activeRange, 10);
-
-    const lastDate = new Date(cleanedData.at(-1).date);
-    const start = new Date(lastDate);
-    start.setDate(lastDate.getDate() - (days - 1));
-
-    const fullDates = generateDateRange(start, lastDate);
-
-    const map = Object.fromEntries(cleanedData.map((d) => [d.date, d.clicks]));
-
-    const final = fullDates.map((date) => ({
-      date,
-      clicks: map[date] ?? 0,
-    }));
-
-
-    return final;
-  }, [activeRange, cleanedData]);
-
-  // STEP 3 — TOTALS
-  const totals = React.useMemo(() => {
-    const getTotal = (rangeDays) =>
-      cleanedData
-        .slice(-Math.min(rangeDays, cleanedData.length))
-        .reduce((sum, d) => sum + d.clicks, 0);
-
-    const t = {
-      "7": getTotal(7),
-      "30": getTotal(30),
-      "365": getTotal(365),
-    };
-
-    return t;
-  }, [cleanedData]);
 
   return (
     <Card className="py-0">

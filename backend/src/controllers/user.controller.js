@@ -22,7 +22,7 @@ export const generateTokens = (user) => {
   } catch (error) {
     throw new ApiError(500, "Token generation failed", [error]);
   }
-}
+};
 
 // User registration
 export const registerUser = async (req, res) => {
@@ -30,7 +30,7 @@ export const registerUser = async (req, res) => {
   console.log(username, email, password);
 
   if ([email, username, password].some((field) => field?.trim() === "")) {
-    throw new ApiError(400, "All fields are required")
+    throw new ApiError(400, "All fields are required");
   }
 
   const existingUser = await UserModel.getUserByEmail(email);
@@ -45,19 +45,22 @@ export const registerUser = async (req, res) => {
   const newUser = await UserModel.createUser(username, email, passwordHash);
 
   const tokens = generateTokens(newUser);
-  await UserModel.updateTokens(newUser.id, tokens.accessToken, tokens.refreshToken);
+  await UserModel.updateTokens(
+    newUser.id,
+    tokens.accessToken,
+    tokens.refreshToken
+  );
 
   const options = {
     httpOnly: true,
-    secure: true
-  }
+    secure: true,
+  };
 
-  return res.status(200)
+  return res
+    .status(200)
     .cookie("refreshToken", tokens.refreshToken, options)
     .cookie("accessToken", tokens.accessToken, options)
-    .json(
-      new ApiResponse(200, tokens, "Registration successful")
-    )
+    .json(new ApiResponse(200, tokens, "Registration successful"));
 };
 
 export const loginUserWithGoogle = async (req, res) => {
@@ -76,7 +79,7 @@ export const loginUserWithGoogle = async (req, res) => {
   try {
     ticket = await googleClient.verifyIdToken({
       idToken,
-      audience: process.env.GOOGLE_CLIENT_ID
+      audience: process.env.GOOGLE_CLIENT_ID,
     });
   } catch (err) {
     throw new ApiError(401, "Invalid Google token");
@@ -91,7 +94,7 @@ export const loginUserWithGoogle = async (req, res) => {
   let user = await UserModel.getUserByEmail(googleEmail);
 
   if (user) {
-    if ((user.provider === "local")) {
+    if (user.provider === "local") {
       throw new ApiError(
         400,
         "Email already registered with password login. Use normal login."
@@ -100,11 +103,22 @@ export const loginUserWithGoogle = async (req, res) => {
 
     // Existing Google user → proceed to login
     const tokens = generateTokens(user);
-    await UserModel.updateTokens(user.id, tokens.accessToken, tokens.refreshToken);
+    await UserModel.updateTokens(
+      user.id,
+      tokens.accessToken,
+      tokens.refreshToken
+    );
 
-    return res.status(200)
-      .cookie("refreshToken", tokens.refreshToken, { httpOnly: true, secure: true })
-      .cookie("accessToken", tokens.accessToken, { httpOnly: true, secure: true })
+    return res
+      .status(200)
+      .cookie("refreshToken", tokens.refreshToken, {
+        httpOnly: true,
+        secure: true,
+      })
+      .cookie("accessToken", tokens.accessToken, {
+        httpOnly: true,
+        secure: true,
+      })
       .json(new ApiResponse(200, tokens, "Google login successful"));
   }
 
@@ -117,15 +131,21 @@ export const loginUserWithGoogle = async (req, res) => {
   });
 
   const tokens = generateTokens(newUser);
-  await UserModel.updateTokens(newUser.id, tokens.accessToken, tokens.refreshToken);
+  await UserModel.updateTokens(
+    newUser.id,
+    tokens.accessToken,
+    tokens.refreshToken
+  );
 
-  return res.status(201)
-    .cookie("refreshToken", tokens.refreshToken, { httpOnly: true, secure: true })
+  return res
+    .status(201)
+    .cookie("refreshToken", tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+    })
     .cookie("accessToken", tokens.accessToken, { httpOnly: true, secure: true })
     .json(new ApiResponse(200, tokens, "Google Registration successful"));
-
-
-}
+};
 
 // User local login
 export const loginUser = async (req, res) => {
@@ -133,33 +153,37 @@ export const loginUser = async (req, res) => {
 
   const user = await UserModel.getUserByEmail(email);
   if (!user) throw new ApiError(401, "Invalid email or password");
-  if (!(user.provider === "local")) throw new ApiError(401, `Login with ${user.provider} to continue`);
+  if (!(user.provider === "local"))
+    throw new ApiError(401, `Login with ${user.provider} to continue`);
 
   const isPasswordValid = await bcrypt.compare(password, user.password_hash);
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid password");
   }
   const tokens = generateTokens(user);
-  await UserModel.updateTokens(user.id, tokens.accessToken, tokens.refreshToken);
+  await UserModel.updateTokens(
+    user.id,
+    tokens.accessToken,
+    tokens.refreshToken
+  );
 
   const options = {
     httpOnly: true,
-    secure: true
-  }
+    secure: true,
+  };
 
-  return res.status(200)
+  return res
+    .status(200)
     .cookie("refreshToken", tokens.refreshToken, options)
     .cookie("accessToken", tokens.accessToken, options)
-    .json(
-      new ApiResponse(200, tokens, "Login successful")
-    )
+    .json(new ApiResponse(200, tokens, "Login successful"));
 };
 
 export const getCurrentUser = async (req, res) => {
-  return res.status(200).json(
-    new ApiResponse(200, req.user, "User fetched successfully")
-  )
-}
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "User fetched successfully"));
+};
 
 export const logoutUser = async (req, res) => {
   try {
@@ -167,14 +191,57 @@ export const logoutUser = async (req, res) => {
     await UserModel.clearTokens(userId);
     const options = {
       httpOnly: true,
-      secure: true
-    }
-    return res.status(200)
+      secure: true,
+    };
+    return res
+      .status(200)
       .clearCookie("accessToken", options)
-      .clearCookie("refreshToken", options).json(
-        new ApiResponse(200, null, "Logout successful")
-      )
+      .clearCookie("refreshToken", options)
+      .json(new ApiResponse(200, null, "Logout successful"));
   } catch (error) {
     throw new ApiError(500, "Logout failed", [error]);
   }
+};
+
+export const getUserUrlStats = async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) throw new ApiError(401, "Unauthorized");
+
+  const { from, to, urlId } = req.query;
+
+  const hasTime = (s) => typeof s === "string" && s.includes("T");
+
+  const now = new Date();
+
+  const toDate = to ? new Date(to) : now;
+  if (!hasTime(to)) toDate.setUTCHours(23, 59, 59, 999);
+
+  const fromDate = from
+    ? new Date(from)
+    : new Date(toDate.getTime() - 6 * 24 * 60 * 60 * 1000); // default last 7 days
+  if (!hasTime(from)) fromDate.setUTCHours(0, 0, 0, 0);
+
+  if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+    throw new ApiError(
+      400,
+      "Invalid from/to date. Use YYYY-MM-DD or ISO string."
+    );
+  }
+  if (fromDate > toDate) throw new ApiError(400, "`from` must be <= `to`");
+
+  const stats = await UserModel.getUserUrlStats({
+    userId,
+    from: fromDate.toISOString(),
+    to: toDate.toISOString(),
+    urlId,
+  });
+
+  const data = {
+    range: { from: fromDate.toISOString(), to: toDate.toISOString() },
+    ...stats,
+  };
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, data, "User URL stats fetched successfully"));
 };
