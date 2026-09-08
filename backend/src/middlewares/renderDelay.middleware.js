@@ -1,19 +1,15 @@
-let lastRequest = Date.now();
+const COLD_START_DELAY_MS = Number(process.env.RENDER_DELAY_MS) || 20000;
+
 let cold = true;
 
-function random(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 export const renderDelay = (req, res, next) => {
-    
-  if (process.env.RENDER_DELAY !== "true") {
-    return next();
-  }
-  console.log("Render delay middleware active");
-  const now = Date.now();
+  if (process.env.RENDER_DELAY !== "true") return next();
+  if (!cold) return next();
 
+  cold = false;
+  console.log(`Render delay: holding first request for ${COLD_START_DELAY_MS}ms`);
 
-    return setTimeout(() => next(), 20000);
- 
+  const timer = setTimeout(next, COLD_START_DELAY_MS);
+  timer.unref?.();
+  res.on?.("close", () => clearTimeout(timer));
 };

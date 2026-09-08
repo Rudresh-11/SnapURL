@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { OAuth2Client } from "google-auth-library";
+import { getAuthCookieOptions, getClearCookieOptions } from "../utils/cookieOptions.js";
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const generateTokens = (user) => {
@@ -24,7 +25,6 @@ export const generateTokens = (user) => {
   }
 };
 
-// User registration
 export const registerUser = async (req, res) => {
   const { username, email, password } = req.body;
   console.log(username, email, password);
@@ -51,10 +51,7 @@ export const registerUser = async (req, res) => {
     tokens.refreshToken
   );
 
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
+  const options = getAuthCookieOptions();
 
   return res
     .status(200)
@@ -65,9 +62,6 @@ export const registerUser = async (req, res) => {
 
 export const loginUserWithGoogle = async (req, res) => {
   const { provider, idToken } = req.body;
-  // ---------------------------
-  // 1️⃣ GOOGLE LOGIN FLOW
-  // ---------------------------
   if (!provider) throw new ApiError(401, "provider is not provided");
   if (provider != "google") throw new ApiError(401, "provider is not google");
 
@@ -90,7 +84,6 @@ export const loginUserWithGoogle = async (req, res) => {
   const googleEmail = googlePayload.email;
   const googleName = googlePayload.name;
 
-  // 1. Check if user already exists with google_id
   let user = await UserModel.getUserByEmail(googleEmail);
 
   if (user) {
@@ -101,7 +94,6 @@ export const loginUserWithGoogle = async (req, res) => {
       );
     }
 
-    // Existing Google user → proceed to login
     const tokens = generateTokens(user);
     await UserModel.updateTokens(
       user.id,
@@ -109,20 +101,15 @@ export const loginUserWithGoogle = async (req, res) => {
       tokens.refreshToken
     );
 
+    const options = getAuthCookieOptions();
+
     return res
       .status(200)
-      .cookie("refreshToken", tokens.refreshToken, {
-        httpOnly: true,
-        secure: true,
-      })
-      .cookie("accessToken", tokens.accessToken, {
-        httpOnly: true,
-        secure: true,
-      })
+      .cookie("refreshToken", tokens.refreshToken, options)
+      .cookie("accessToken", tokens.accessToken, options)
       .json(new ApiResponse(200, tokens, "Google login successful"));
   }
 
-  // 2. NO EXISTING USER → CREATE ONE
   const newUser = await UserModel.createGoogleUser({
     username: googleName.replace(/\s+/g, "").toLowerCase(),
     email: googleEmail,
@@ -137,19 +124,21 @@ export const loginUserWithGoogle = async (req, res) => {
     tokens.refreshToken
   );
 
+  const options = getAuthCookieOptions();
+
   return res
     .status(201)
-    .cookie("refreshToken", tokens.refreshToken, {
-      httpOnly: true,
-      secure: true,
-    })
-    .cookie("accessToken", tokens.accessToken, { httpOnly: true, secure: true })
-    .json(new ApiResponse(200, tokens, "Google Registration successful"));
+    .cookie("refreshToken", tokens.refreshToken, options)
+    .cookie("accessToken", tokens.accessToken, options)
+    .json(new ApiResponse(201, tokens, "Google Registration successful"));
 };
 
-// User local login
 export const loginUser = async (req, res) => {
-  const { email, password, provider, idToken } = req.body;
+  const { email, password } = req.body;
+
+  if (!email?.trim() || !password) {
+    throw new ApiError(400, "Email and password are required");
+  }
 
   const user = await UserModel.getUserByEmail(email);
   if (!user) throw new ApiError(401, "Invalid email or password");
@@ -167,10 +156,7 @@ export const loginUser = async (req, res) => {
     tokens.refreshToken
   );
 
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
+  const options = getAuthCookieOptions();
 
   return res
     .status(200)
@@ -189,10 +175,7 @@ export const logoutUser = async (req, res) => {
   try {
     const userId = req.user.id;
     await UserModel.clearTokens(userId);
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
+    const options = getClearCookieOptions();
     return res
       .status(200)
       .clearCookie("accessToken", options)
@@ -218,7 +201,7 @@ export const getUserUrlStats = async (req, res) => {
 
   const fromDate = from
     ? new Date(from)
-    : new Date(toDate.getTime() - 6 * 24 * 60 * 60 * 1000); // default last 7 days
+    : new Date(toDate.getTime() - 6 * 24 * 60 * 60 * 1000);
   if (!hasTime(from)) fromDate.setUTCHours(0, 0, 0, 0);
 
   if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {

@@ -2,14 +2,11 @@ import express from "express";
 import cors from "cors";
 import { ApiResponse } from "./src/utils/ApiResponse.js";
 
-// Routes
 import authRoutes from "./src/routes/user.routes.js";
 import urlRoutes from "./src/routes/url.routes.js";
 import redirectRouter from "./src/routes/redirect.routes.js";
 import analyticsRoutes from "./src/routes/analytics.routes.js";
 
-// Middlewares
-import { verifyJWT } from "./src/middlewares/auth.middleware.js";
 import { errorHandler } from "./src/middlewares/errorhandler.middleware.js";
 import { renderDelay } from "./src/middlewares/renderDelay.middleware.js";
 import { requestLogger } from "./src/middlewares/requesthandler.middleware.js";
@@ -31,7 +28,6 @@ app.use(cookieParser());
 app.use(renderDelay);
 app.use(requestLogger);
 
-// Routes
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use("/api/auth", authRoutes);
 app.use("/api/url", urlRoutes);
@@ -43,7 +39,6 @@ app.get("/api/test", (req, res) => {
 });
 
 app.use("/", redirectRouter);
-app.use(renderDelay);
 app.use(errorHandler);
 
 export default app;

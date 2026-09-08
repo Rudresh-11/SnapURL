@@ -1,198 +1,252 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Filter, MoreVertical, TrendingUp } from "lucide-react";
+import { Calendar, Globe2, TrendingUp } from "lucide-react";
 
 import useApi from "@/hooks/useApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 import { ChartBarInteractive } from "@/components/analytics/barchart";
 import { ChartPieDonut } from "@/components/analytics/piechart";
 
-function formatISODate(d) {
+const RANGE_OPTIONS = [
+  { key: "7", label: "7 days" },
+  { key: "30", label: "30 days" },
+  { key: "90", label: "90 days" },
+];
+
+const ENDPOINT = "/auth/me/url-stats";
+
+function toISODate(d) {
   return d.toISOString().split("T")[0];
 }
 
 function formatPrettyDate(input) {
   const d = new Date(input);
   if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function StatCard({ icon: Icon, label, headline, value, caption, loading }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Icon className="size-4 text-muted-foreground" />
+              <span className="truncate font-medium">{headline}</span>
+            </div>
+            <p className="mt-1 text-3xl font-semibold tabular-nums">{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{caption}</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function AnalyticsPage() {
-  // Default: last 7 days (including today)
-  const [toDate] = useState(() => new Date());
-  const [fromDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 6);
-    return d;
-  });
+  const [rangeDays, setRangeDays] = useState(7);
 
-  const dateRangeLabel = useMemo(() => {
-    const from = fromDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    const to = toDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    return `${from} → ${to}`;
-  }, [fromDate, toDate]);
+  const { from, to, label } = useMemo(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - (rangeDays - 1));
 
-  // NOTE: adjust the endpoint to match your backend route.
-  // Example if you used: router.get("/me/url-stats", ...)
-  const endpoint = "/auth/me/url-stats";
+    const fmt = (d) =>
+      d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
 
-  const { data, loading, error, request } = useApi(endpoint, { auto: false });
+    return {
+      from: toISODate(start),
+      to: toISODate(end),
+      label: `${fmt(start)} → ${fmt(end)}`,
+    };
+  }, [rangeDays]);
+
+  const { data, loading, error, request } = useApi(ENDPOINT);
 
   useEffect(() => {
-    const from = formatISODate(fromDate);
-    const to = formatISODate(toDate);
-    request(null, `${endpoint}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
-  }, [endpoint, fromDate, toDate, request]);
+    request(
+      null,
+      `${ENDPOINT}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+    );
+  }, [from, to, request]);
 
-  // ApiResponse shape: { statusCode, data, message, success }
   const analytics = data?.data;
+  const showSkeleton = loading && !analytics;
 
-  const topDate = analytics?.topPerformingDate?.date;
-  const topDateEngagements = analytics?.topPerformingDate?.engagements ?? 0;
+  const engagementsOverTime = useMemo(
+    () =>
+      (analytics?.engagementsOverTime ?? []).map((r) => ({
+        date: r.date,
+        clicks: Number(r.engagements ?? 0),
+      })),
+    [analytics]
+  );
+
   const totalEngagements = analytics?.totals?.engagements ?? 0;
-
-  const engagementsOverTimeForBar = useMemo(() => {
-    const rows = analytics?.engagementsOverTime ?? [];
-    return rows.map((r) => ({
-      date: r.date,
-      clicks: Number(r.engagements ?? 0),
-    }));
-  }, [analytics]);
-
-  const deviceData = useMemo(() => analytics?.engagementsByDevice ?? [], [analytics]);
-  const referrerData = useMemo(() => analytics?.engagementsByReferrer ?? [], [analytics]);
-  const countryData = useMemo(() => analytics?.engagementsByLocation?.countries ?? [], [analytics]);
-
-  const topLocationLabel = useMemo(() => {
-    const country = analytics?.topLocation?.country;
-    if (!country) return "-";
-    return country;
-  }, [analytics]);
+  const topDate = analytics?.topPerformingDate;
+  const topLocation = analytics?.topLocation;
+  const countries = analytics?.engagementsByLocation?.countries ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex-1 p-6">
-        {/* Date Range & Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <button className="px-4 py-2 border rounded text-sm flex items-center gap-2 hover:bg-gray-50">
-            <Calendar className="w-4 h-4" />
-            {dateRangeLabel}
-          </button>
-          <button className="px-4 py-2 border rounded text-sm flex items-center gap-2 hover:bg-gray-50">
-            <Filter className="w-4 h-4" />
-            Add filters
-          </button>
-          <span className="text-sm text-gray-600">Showing data for all links and QR Codes</span>
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Calendar className="size-3.5" />
+            {label} · all links
+          </p>
         </div>
 
-        {error ? (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-sm text-red-600">{error}</CardTitle>
-            </CardHeader>
-          </Card>
-        ) : null}
-
-        {/* Top Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Top Performing Date */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="text-sm font-medium text-gray-600">
-                Top performing date by Total Engagements
-              </div>
-              <MoreVertical className="w-4 h-4 text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5" />
-                <div className="text-lg font-bold">{topDate ? formatPrettyDate(topDate) : "-"}</div>
-              </div>
-              <div className="text-3xl font-bold mb-1">{topDateEngagements} Engagements</div>
-              <div className="text-xs text-gray-500">Total: {totalEngagements}</div>
-              {loading ? <div className="text-xs text-gray-400 mt-2">Loading...</div> : null}
-            </CardContent>
-          </Card>
-
-          {/* Devices */}
-          <ChartPieDonut
-            title="Devices"
-            description="Total engagements by device"
-            data={deviceData}
-            labelKey="device"
-            valueKey="engagements"
-            maxCategories={5}
-          />
-
-          {/* Referrers */}
-          <ChartPieDonut
-            title="Referrers"
-            description="Total engagements by referrer"
-            data={referrerData}
-            labelKey="referrer"
-            valueKey="engagements"
-            maxCategories={5}
-          />
+        <div className="flex rounded-md border p-0.5">
+          {RANGE_OPTIONS.map((opt) => (
+            <Button
+              key={opt.key}
+              size="sm"
+              variant={rangeDays === Number(opt.key) ? "secondary" : "ghost"}
+              onClick={() => setRangeDays(Number(opt.key))}
+              aria-pressed={rangeDays === Number(opt.key)}
+            >
+              {opt.label}
+            </Button>
+          ))}
         </div>
+      </div>
 
-        {/* Over Time */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2">
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <StatCard
+          icon={TrendingUp}
+          label="Top performing date"
+          headline={topDate?.date ? formatPrettyDate(topDate.date) : "No data"}
+          value={`${topDate?.engagements ?? 0} clicks`}
+          caption={`${totalEngagements} clicks in range`}
+          loading={showSkeleton}
+        />
+
+        <ChartPieDonut
+          title="Devices"
+          description="Clicks by device"
+          data={analytics?.engagementsByDevice ?? []}
+          labelKey="device"
+          valueKey="engagements"
+        />
+
+        <ChartPieDonut
+          title="Referrers"
+          description="Clicks by referrer"
+          data={analytics?.engagementsByReferrer ?? []}
+          labelKey="referrer"
+          valueKey="engagements"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {showSkeleton ? (
+            <Skeleton className="h-[340px] w-full rounded-xl" />
+          ) : (
             <ChartBarInteractive
-              title="Total Engagements over time"
-              description="Showing clicks over time"
-              data={engagementsOverTimeForBar}
+              title="Clicks over time"
+              description="All your links combined"
+              data={engagementsOverTime}
               height={260}
             />
-          </div>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div className="text-sm font-medium text-gray-600">Top performing location</div>
-              <MoreVertical className="w-4 h-4 text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-5 h-5" />
-                <div className="text-lg font-bold">{topLocationLabel}</div>
-              </div>
-              <div className="text-3xl font-bold mb-1">{analytics?.topLocation?.engagements ?? 0} Engagements</div>
-              <div className="text-xs text-gray-500">{dateRangeLabel}</div>
-            </CardContent>
-          </Card>
+          )}
         </div>
 
-        {/* Countries table (simple) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-600">Total Engagements by location (Countries)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-auto max-h-[260px]">
+        <StatCard
+          icon={Globe2}
+          label="Top performing location"
+          headline={topLocation?.country || "No data"}
+          value={`${topLocation?.engagements ?? 0} clicks`}
+          caption={label}
+          loading={showSkeleton}
+        />
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Clicks by country</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {showSkeleton ? (
+            <div className="space-y-3">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : countries.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No location data for this range yet.
+            </p>
+          ) : (
+            <div className="max-h-72 overflow-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white">
+                <thead className="sticky top-0 bg-card">
                   <tr className="border-b">
-                    <th className="text-left py-2 font-medium text-gray-600">#</th>
-                    <th className="text-left py-2 font-medium text-gray-600">Country</th>
-                    <th className="text-right py-2 font-medium text-gray-600">Engagements</th>
+                    <th className="py-2 text-left font-medium text-muted-foreground">
+                      #
+                    </th>
+                    <th className="py-2 text-left font-medium text-muted-foreground">
+                      Country
+                    </th>
+                    <th className="py-2 text-right font-medium text-muted-foreground">
+                      Clicks
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(countryData ?? []).map((row, idx) => (
-                    <tr key={`${row.country}-${idx}`} className="border-b hover:bg-gray-50">
-                      <td className="py-2 text-gray-600">{idx + 1}</td>
+                  {countries.map((row, idx) => (
+                    <tr
+                      key={`${row.country}-${idx}`}
+                      className="border-b last:border-0 hover:bg-muted/50"
+                    >
+                      <td className="py-2 text-muted-foreground tabular-nums">
+                        {idx + 1}
+                      </td>
                       <td className="py-2 font-medium">{row.country}</td>
-                      <td className="py-2 text-right">{row.engagements}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {row.engagements}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

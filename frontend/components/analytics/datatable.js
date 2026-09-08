@@ -34,28 +34,23 @@ import {
 import { formatIST } from "@/lib/timeconverter";
 
 export function ClicksTable({ data = [] }) {
-  // ----------------------------------------------------------------
-  // 1️⃣ LOCAL STATE
-  // ----------------------------------------------------------------
-  const [globalFilter, setGlobalFilter] = React.useState(""); // global search
+  const [globalFilter, setGlobalFilter] = React.useState("");
   const [sorting, setSorting] = React.useState([{ id: "clicked_at", desc: true }]);
   const [filters, setFilters] = React.useState([]);
   const [visibility, setVisibility] = React.useState({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  // ----------------------------------------------------------------
-  // 2️⃣ COLUMNS
-  // ----------------------------------------------------------------
-  const columns = [
-    // SERIAL NO
+  const columns = React.useMemo(() => [
     {
       id: "sr_no",
       header: "Sr No",
-      cell: ({ row }) => Number(row.id) + 1,
+      cell: ({ row, table }) => {
+        const { pageIndex, pageSize } = table.getState().pagination;
+        return pageIndex * pageSize + row.index + 1;
+      },
       enableSorting: false,
     },
 
-    // SELECTION CHECKBOX
     {
       id: "select",
       header: ({ table }) => (
@@ -104,13 +99,12 @@ export function ClicksTable({ data = [] }) {
         </Button>
       ),
       cell: ({ row }) => {
-        const raw = row.getValue("clicked_at"); // original date string
+        const raw = row.getValue("clicked_at");
         return formatIST(raw);
       },
       enableSorting:true,
     },
 
-    // ACTIONS MENU
     {
       id: "actions",
       enableHiding: false,
@@ -130,17 +124,13 @@ export function ClicksTable({ data = [] }) {
               >
                 Copy IP
               </DropdownMenuItem>
-              <DropdownMenuItem>View Details</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         );
       },
     },
-  ];
+  ], []);
 
-  // ----------------------------------------------------------------
-  // 3️⃣ TABLE INSTANCE
-  // ----------------------------------------------------------------
   const table = useReactTable({
     data,
     columns,
@@ -165,7 +155,6 @@ export function ClicksTable({ data = [] }) {
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
 
-    // Enable global filtering on ALL fields
     globalFilterFn: (row, _, value) => {
       if (!value) return true;
       return Object.values(row.original)
@@ -175,25 +164,32 @@ export function ClicksTable({ data = [] }) {
     },
   });
 
-  // ----------------------------------------------------------------
-  // 4️⃣ EXPORT SELECTED ROWS HANDLER
-  // ----------------------------------------------------------------
   function handleExport() {
     const rows = table.getSelectedRowModel().rows.map((r) => r.original);
-    console.log("EXPORTING ROWS:", rows);
+    if (!rows.length) return;
 
-    // You can replace with CSV, Excel, or API export
-    alert(`Exported ${rows.length} rows (check console).`);
+    const fields = ["ip_address", "country", "device_type", "referrer", "clicked_at"];
+    const escape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
+    const csv = [
+      fields.join(","),
+      ...rows.map((row) => fields.map((f) => escape(row[f])).join(",")),
+    ].join("\r\n");
+
+    const url = URL.createObjectURL(
+      new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" })
+    );
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `snapurl-clicks-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
-  // ----------------------------------------------------------------
-  // 5️⃣ RENDER UI
-  // ----------------------------------------------------------------
   return (
-    <div className="w-full mt-8">
+    <div className="w-full">
 
-      {/* GLOBAL SEARCH */}
-      <div className="flex items-center py-4 gap-4">
+      <div className="flex flex-wrap items-center gap-3 pb-4">
         <Input
           placeholder="Search anything..."
           value={globalFilter ?? ""}
@@ -201,18 +197,12 @@ export function ClicksTable({ data = [] }) {
           className="max-w-sm"
         />
 
-        {/* EXPORT BUTTON WHEN ROWS SELECTED */}
         {table.getSelectedRowModel().rows.length > 0 && (
-          <Button
-            variant="default"
-            className="bg-blue-600 text-white"
-            onClick={handleExport}
-          >
+          <Button variant="default" onClick={handleExport}>
             Export {table.getSelectedRowModel().rows.length} rows
           </Button>
         )}
 
-        {/* COLUMN SELECTOR */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -230,15 +220,14 @@ export function ClicksTable({ data = [] }) {
                   checked={col.getIsVisible()}
                   onCheckedChange={(v) => col.toggleVisibility(!!v)}
                 >
-                  {col.id}
+                  {col.id.replace(/_/g, " ")}
                 </DropdownMenuCheckboxItem>
               ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {/* TABLE */}
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((group) => (
@@ -285,7 +274,6 @@ export function ClicksTable({ data = [] }) {
         </Table>
       </div>
 
-      {/* PAGINATION CONTROLS */}
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-sm text-muted-foreground">
           {table.getSelectedRowModel().rows.length} row(s) selected out of {table.getFilteredRowModel().rows.length}

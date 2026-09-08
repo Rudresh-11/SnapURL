@@ -1,87 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircleIcon, CheckCircle2Icon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// WARNING: Global variables like this can cause issues in complex apps.
-// Ideally, use a Context or a Toast library (like Sonner or React-Hot-Toast) for stacking.
-let alertCount = 0;
+const EXIT_MS = 300;
+
+const mounted = [];
+const subscribers = new Set();
+
+function notify() {
+  subscribers.forEach((fn) => fn());
+}
 
 export default function ToastAlert({
   type = "success",
   message = "Request successful",
   description = "Request has been processed successfully",
-  duration = 8000, // Reduced default for testing
+  duration = 5000,
 }) {
-  const [visible, setVisible] = useState(true);
-  const [shouldRender, setShouldRender] = useState(true); // New state to control DOM presence
-  const [offset, setOffset] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(true);
+  const [index, setIndex] = useState(0);
+  const idRef = useRef({});
 
-  // Handle stacking logic
   useEffect(() => {
-    alertCount++;
-    const index = alertCount - 1;
-    setOffset(index * 90);
+    const id = idRef.current;
+    mounted.push(id);
+
+    const sync = () => setIndex(Math.max(0, mounted.indexOf(id)));
+    subscribers.add(sync);
+    sync();
+    notify();
 
     return () => {
-      alertCount--;
+      const at = mounted.indexOf(id);
+      if (at !== -1) mounted.splice(at, 1);
+      subscribers.delete(sync);
+      notify();
     };
   }, []);
 
-  // Handle Auto-hide and Animation logic
   useEffect(() => {
-    // 1. Wait for 'duration', then start the fade-out animation
-    const hideTimer = setTimeout(() => {
-      console.log("hide timer 8 seconds dine")
-      setVisible(false);
-    }, duration);
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
-    return () => clearTimeout(hideTimer); // cleanup
+  useEffect(() => {
+    const hideTimer = setTimeout(() => setVisible(false), duration);
+    return () => clearTimeout(hideTimer);
   }, [duration]);
 
-  // 2. Wait for the fade-out animation (500ms) to finish, then unmount from DOM
   useEffect(() => {
-    if (!visible) {
-      const unmountTimer = setTimeout(() => {
-        setShouldRender(false);
-      }, 500); // Matches the 'duration-500' in CSS
-
-      return () => clearTimeout(unmountTimer);
-    }
+    if (visible) return;
+    const unmountTimer = setTimeout(() => setShouldRender(false), EXIT_MS);
+    return () => clearTimeout(unmountTimer);
   }, [visible]);
 
-  // Only return null AFTER the animation has finished
   if (!shouldRender) return null;
+
+  const isSuccess = type === "success";
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       className={`
-        fixed right-6
-        transition-all duration-500 ease-in-out
-        transform
-        ${visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}
-        z-50
+        fixed right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm
+        transition-all duration-300 ease-out
+        ${visible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}
       `}
-      style={{ bottom: 20 + offset }}
+      style={{ bottom: 16 + index * 88 }}
     >
-      {type === "success" ? (
-        <Alert variant="success" className="shadow-lg w-[350px] bg-white">
-          <CheckCircle2Icon className="text-green-600" />
-          <AlertTitle >{message}</AlertTitle>
-          <AlertDescription >
-            {description}
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <Alert variant="destructive" className="shadow-lg w-[350px] bg-white">
-          <AlertCircleIcon className="text-red-600" />
-          <AlertTitle >{message}</AlertTitle>
-          <AlertDescription >
-            {description}
-          </AlertDescription>
-        </Alert>
-      )}
+      <Alert
+        variant={isSuccess ? "success" : "destructive"}
+        className="bg-popover text-popover-foreground shadow-lg"
+      >
+        {isSuccess ? <CheckCircle2Icon /> : <AlertCircleIcon />}
+        <AlertTitle>{message}</AlertTitle>
+        <AlertDescription className="break-words">{description}</AlertDescription>
+      </Alert>
     </div>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 
 import {
     Sidebar,
     SidebarContent,
+    SidebarFooter,
     SidebarGroup,
     SidebarGroupContent,
     SidebarMenu,
@@ -14,17 +16,16 @@ import {
     SidebarHeader,
     useSidebar,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 import {
-    Home,
     Link2,
     QrCode,
     BarChart3,
-    MonitorSmartphone,
-    Globe,
     Settings,
-    ChevronLeft,
-    ChevronRight,
+    PanelLeftClose,
+    PanelLeftOpen,
+    Plus,
 } from "lucide-react";
 
 const items = [
@@ -36,66 +37,88 @@ const items = [
 
 export function AppSidebar() {
     const pathname = usePathname();
-    const { state,toggleSidebar } = useSidebar(); // expanded | collapsed
+    const { state, isMobile, toggleSidebar, setOpenMobile } = useSidebar();
+    const collapsed = state === "collapsed" && !isMobile;
+
+    const closeOnMobile = () => {
+        if (isMobile) setOpenMobile(false);
+    };
 
     return (
-        <Sidebar collapsible="icon" className="border-r bg-white">
-            {/* LOGO */}
-            <SidebarHeader className="flex items-center justify-center py-4">
+        <Sidebar collapsible="icon">
+            <SidebarHeader className="gap-3 p-3">
+                <div className="flex items-center justify-between gap-2">
+                    <Link
+                        href="/dashboard/links"
+                        onClick={closeOnMobile}
+                        className="flex min-w-0 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        <Image
+                            src="/logo.png"
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="size-8 shrink-0 rounded"
+                        />
+                        {!collapsed && (
+                            <span className="truncate text-base font-semibold tracking-tight">
+                                SnapURL
+                            </span>
+                        )}
+                    </Link>
 
-                {/* Collapse Button */}
-                <button
-                    onClick={toggleSidebar}
-                    className="absolute -right-3 top-6 z-20 bg-white border rounded-full p-1 shadow hover:bg-gray-100 transition"
-                >
-                    {state === "expanded" ? (
-                        <ChevronLeft size={18} />
-                    ) : (
-                        <ChevronRight size={18} />
-                    )}
-                </button>
-                <div className="flex items-center gap-2">
-                    <Image
-                        src="/logo.png"  // <-- replace with your logo path
-                        alt="SnapURL Logo"
-                        width={64}
-                        height={64}
-                        className="rounded"
-                    />
-
-                    {/* Hide logo text when collapsed */}
-                    {state === "expanded" && (
-                        <span className="text-lg font-semibold tracking-tight">
-                            SnapURL
-                        </span>
+                    {!isMobile && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleSidebar}
+                            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                            className={collapsed ? "hidden" : "size-8 shrink-0"}
+                        >
+                            <PanelLeftClose className="size-4" />
+                        </Button>
                     )}
                 </div>
+
+                {collapsed ? (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleSidebar}
+                        aria-label="Expand sidebar"
+                        className="size-8"
+                    >
+                        <PanelLeftOpen className="size-4" />
+                    </Button>
+                ) : (
+                    <Button asChild size="sm" className="w-full justify-start gap-2">
+                        <Link href="/dashboard/links/create" onClick={closeOnMobile}>
+                            <Plus className="size-4" />
+                            Create link
+                        </Link>
+                    </Button>
+                )}
             </SidebarHeader>
 
-            {/* MENU */}
             <SidebarContent>
                 <SidebarGroup>
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {items.map((item) => {
-                                const isActive = pathname.startsWith(item.url);
+                                const isActive =
+                                    pathname === item.url || pathname.startsWith(`${item.url}/`);
 
                                 return (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton
                                             asChild
                                             isActive={isActive}
-                                            className={`p-3 transition ${isActive
-                                                    ? "bg-[#E5EEFF] text-blue-600 font-medium"
-                                                    : "text-gray-700 hover:bg-gray-100"
-                                                }`}
+                                            tooltip={item.title}
                                         >
-                                            <a href={item.url} className="flex items-center gap-3">
-                                                <item.icon size={20} />
-
-                                                {/* When collapsed, hide text */}
-                                                {state === "expanded" && <span>{item.title}</span>}
-                                            </a>
+                                            <Link href={item.url} onClick={closeOnMobile}>
+                                                <item.icon className="size-4" />
+                                                <span>{item.title}</span>
+                                            </Link>
                                         </SidebarMenuButton>
                                     </SidebarMenuItem>
                                 );
@@ -104,6 +127,14 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
+
+            <SidebarFooter>
+                {!collapsed && (
+                    <p className="px-2 pb-1 text-xs text-sidebar-foreground/60">
+                        SnapURL — shorten, share, measure.
+                    </p>
+                )}
+            </SidebarFooter>
         </Sidebar>
     );
 }

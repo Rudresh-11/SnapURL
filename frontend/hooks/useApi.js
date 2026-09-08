@@ -10,51 +10,58 @@ export default function useApi(
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(auto);
   const [error, setError] = useState(null);
+  const [errorStatus, setErrorStatus] = useState(null);
+
   const errorRef = useRef(null);
+
+  const bodyRef = useRef(body);
+  useEffect(() => {
+    bodyRef.current = body;
+  }, [body]);
 
   const request = useCallback(
     async (overrideBody = null, overrideUrl = null, overrideMethod = null) => {
       setLoading(true);
       setError(null);
+      setErrorStatus(null);
       errorRef.current = null;
 
       try {
         const res = await api.request({
           url: overrideUrl || endpoint,
           method: overrideMethod || method,
-          data: overrideBody ?? body,
+          data: overrideBody ?? bodyRef.current,
         });
 
         setData(res.data);
         return res.data;
       } catch (err) {
         const msg = err.response?.data?.message || err.message || "API Error";
-        
+
         errorRef.current = msg;
         setError(msg);
+        setErrorStatus(err.response?.status ?? null);
 
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [endpoint, method, body]
+    [endpoint, method]
   );
 
-  // auto-fetch on mount
   useEffect(() => {
-    if (!auto) return; // wait for token
+    if (!auto) return;
     request();
-  }, [auto]);
+  }, [auto, request]);
 
   return {
     data,
     loading,
     error,
+    errorStatus,
+    errorRef,
     request,
     setData,
-    get error() {
-      return errorRef.current;
-    }
   };
 }

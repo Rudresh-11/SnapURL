@@ -1,57 +1,76 @@
 "use client";
 
-import { useParams, notFound } from "next/navigation";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { notFound, useParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
+
 import api from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 export default function RedirectPage() {
   const { shortcode } = useParams();
-  const [nf, setNf] = useState(false);
-  const [error, setError] = useState(null)
+  const [missing, setMissing] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!shortcode) return;
+    let cancelled = false;
+
     const verify = async () => {
+      const base = process.env.NEXT_PUBLIC_API_REDIRECT_URL;
+
       try {
         const res = await api.request({
-          url: `${process.env.NEXT_PUBLIC_API_REDIRECT_URL}/${shortcode}?check=true`,
+          url: `${base}/${shortcode}?check=true`,
           method: "GET",
-          validateStatus: () => true // <── allow axios to return 404 instead of throwing
+          validateStatus: () => true,
+          showErrorToast: false,
         });
 
-        // Check both conditions
+        if (cancelled) return;
+
         if (res.status === 404 || res.data?.message === "Url not found") {
-          setNf(true);
+          setMissing(true);
           return;
         }
         if (res.status < 200 || res.status >= 300) {
-          setError(res.data?.message || "Something went wrong");
+          setError(res.data?.message || "Something went wrong.");
           return;
         }
-        // 🔥 If valid, now perform the actual redirect
-        const realRef = document.referrer;
-        let url = `${process.env.NEXT_PUBLIC_API_REDIRECT_URL}/${shortcode}`;
-        url += realRef ? `?ref=${encodeURIComponent(realRef)}` : `?ref=Direct`;
 
-        window.location.href = url;
-
-      } catch (error) {
-        console.log("Redirect check error:", error);
-        setError(`Somthing unexpected happend`)
+        const referrer = document.referrer || "Direct";
+        window.location.href = `${base}/${shortcode}?ref=${encodeURIComponent(
+          referrer
+        )}`;
+      } catch {
+        if (!cancelled) setError("We couldn't reach the server. Try again.");
       }
     };
 
     verify();
+    return () => {
+      cancelled = true;
+    };
   }, [shortcode]);
 
-  if (nf) return notFound();
+  if (missing) notFound();
 
   if (error) {
     return (
-      <div className="text-center mt-10 text-red-600 font-medium">
-        {error}
-      </div>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="text-sm text-destructive">{error}</p>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/">Go to SnapURL</Link>
+        </Button>
+      </main>
     );
   }
 
-  return <p className="text-center mt-10">Redirecting...</p>;;
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">Taking you there...</p>
+    </main>
+  );
 }

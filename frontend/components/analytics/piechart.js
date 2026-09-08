@@ -1,7 +1,7 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
-import { Pie, PieChart, Cell } from "recharts";
+import * as React from "react";
+import { Cell, Pie, PieChart } from "recharts";
 
 import {
   Card,
@@ -11,16 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 import {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
+  ChartTooltip,
 } from "@/components/ui/chart";
 
-// PRESET COLORS IN ORDER
 const COLORS = [
   "var(--chart-1)",
   "var(--chart-2)",
@@ -30,119 +27,108 @@ const COLORS = [
   "var(--chart-6)",
 ];
 
-
-function CustomDonutTooltip({ active, payload, label }) {
-  if (!active || !payload || !payload.length) return null;
+function DonutTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
 
   const item = payload[0];
-  const name = item.name;
-  const value = item.value;
-  const percent = item.payload.percent; // ← we will add this field below
 
   return (
-    <div className="rounded-md border bg-background px-3 py-2 shadow-sm flex items-center gap-2">
-      {/* Color dot */}
+    <div className="flex items-center gap-2 rounded-md border bg-popover px-3 py-2 text-sm shadow-md">
       <span
-        className="h-2 w-2 rounded-full"
+        className="size-2 shrink-0 rounded-full"
         style={{ background: item.payload.fill }}
       />
-
-      {/* Label */}
-      <span className="font-medium">{name}</span>
-
-      {/* Value */}
-      <span className="font-semibold">{value}</span>
-
-      {/* Percentage (faint) */}
-      <span className="text-muted-foreground text-xs">
-        {percent}%
+      <span className="font-medium">{item.name}</span>
+      <span className="font-semibold tabular-nums">{item.value}</span>
+      <span className="text-xs text-muted-foreground tabular-nums">
+        {item.payload.percent}%
       </span>
     </div>
   );
 }
 
+function EmptyCard({ title, description }) {
+  return (
+    <Card className="flex flex-col">
+      <CardHeader className="items-center">
+        <CardTitle className="text-base">{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
+      </CardHeader>
+      <CardContent className="flex-1">
+        <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
+          No data yet
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function ChartPieDonut({
-  title = "Donut Chart",
+  title = "Breakdown",
   description = "",
   data = [],
   labelKey = "label",
   valueKey = "value",
-  maxCategories = 5, // others grouped at end
+  maxCategories = 5,
 }) {
-  if (!data || data.length === 0) {
-    return (
-      <Card className="flex flex-col">
-        <CardHeader className="items-center pb-0">
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
+  const finalData = React.useMemo(() => {
+    const normalized = (data ?? [])
+      .map((item) => ({
+        label: item?.[labelKey] ?? "Unknown",
+        value: Number(item?.[valueKey]) || 0,
+      }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
 
-        <CardContent className="flex-1 pb-0">
-          <div className="flex h-80 w-full items-center justify-center text-muted-foreground">
-            Your data will appear here.
-          </div>
-        </CardContent>
-      </Card>
-    );
+    const slices = normalized.slice(0, maxCategories);
+    const rest = normalized.slice(maxCategories);
+
+    if (rest.length > 0) {
+      slices.push({
+        label: "Other",
+        value: rest.reduce((sum, x) => sum + x.value, 0),
+      });
+    }
+
+    const total = slices.reduce((sum, x) => sum + x.value, 0);
+
+    return slices.map((item, index) => ({
+      ...item,
+      fill: COLORS[index % COLORS.length],
+      percent: total > 0 ? ((item.value / total) * 100).toFixed(1) : "0.0",
+    }));
+  }, [data, labelKey, valueKey, maxCategories]);
+
+  const chartConfig = React.useMemo(
+    () => ({
+      value: { label: "Value" },
+      ...Object.fromEntries(
+        finalData.map((item) => [item.label, { label: item.label, color: item.fill }])
+      ),
+    }),
+    [finalData]
+  );
+
+  if (finalData.length === 0) {
+    return <EmptyCard title={title} description={description} />;
   }
-  let normalized = data.map((item) => ({
-    label: item[labelKey],
-    value: Number(item[valueKey]),
-  }));
 
-  normalized.sort((a, b) => b.value - a.value);
-
-  let slices = normalized.slice(0, maxCategories);
-  let extra = normalized.slice(maxCategories);
-
-  if (extra.length > 0) {
-    const totalOthers = extra.reduce((sum, x) => sum + x.value, 0);
-    slices.push({
-      label: "Other",
-      value: totalOthers,
-    });
-  }
-
-  const finalData = slices.map((item, index) => ({
-    ...item,
-    fill: COLORS[index] ?? COLORS[COLORS.length - 1],
-  }));
-
-  const total = finalData.reduce((sum, x) => sum + x.value, 0);
-
-  finalData.forEach((item) => {
-    item.percent = ((item.value / total) * 100).toFixed(1);
-  });
-
-
-  const chartConfig = {
-    value: { label: "Value" },
-    ...Object.fromEntries(
-      finalData.map((item) => [
-        item.label,
-        { label: item.label, color: item.fill },
-      ])
-    ),
-  };
+  const shown = Math.min(maxCategories, finalData.length);
 
   return (
     <Card className="flex flex-col">
-      <CardHeader className="items-center pb-0">
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+      <CardHeader className="items-center">
+        <CardTitle className="text-base">{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
 
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square h-80 flex items-center justify-center"
+          className="mx-auto aspect-square h-72 w-full"
         >
           <PieChart>
-            <ChartTooltip
-              cursor={false}
-              content={<CustomDonutTooltip />}
-            />
+            <ChartTooltip cursor={false} content={<DonutTooltip />} />
 
             <Pie
               data={finalData}
@@ -151,23 +137,25 @@ export function ChartPieDonut({
               innerRadius={60}
               outerRadius={100}
             >
-              {finalData.map((entry, index) => (
-                <Cell key={index} fill={entry.fill} />
+              {finalData.map((entry) => (
+                <Cell key={entry.label} fill={entry.fill} />
               ))}
             </Pie>
 
             <ChartLegend
               content={<ChartLegendContent nameKey="label" />}
-              className="flex-wrap gap-2 *:basis-1/3 *:justify-start mt-4"
+              className="mt-4 flex-wrap gap-2 *:basis-1/3 *:justify-start"
             />
           </PieChart>
         </ChartContainer>
       </CardContent>
 
-      <CardFooter className="flex-col gap-2 text-sm">
-        <div className="flex items-center gap-2 leading-none font-medium">
-          Showing Data by Top 5 {`${title.split(" ")[0]}`} <TrendingUp className="h-4 w-4" />
-        </div>
+      <CardFooter className="justify-center text-sm text-muted-foreground">
+        {finalData.length > shown
+          ? `Top ${shown}, with the rest grouped as “Other”`
+          : `Showing all ${finalData.length} ${
+              finalData.length === 1 ? "category" : "categories"
+            }`}
       </CardFooter>
     </Card>
   );

@@ -1,89 +1,138 @@
 "use client";
 
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, XAxis,YAxis } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 
-// Normalize ANY date to YYYY-MM-DD
-function normalizeDate(input) {
-  const d = new Date(input);
-  if (isNaN(d)) return null;
-  return d.toISOString().split("T")[0];
+const RANGES = [
+  { key: "7", label: "Last 7 days" },
+  { key: "30", label: "Last 30 days" },
+  { key: "365", label: "Last year" },
+];
+
+function toDayKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
-function generateDateRange(startDate, endDate) {
-  const result = [];
-  const current = new Date(startDate);
-  while (current <= endDate) {
-    result.push(current.toISOString().split("T")[0]);
-    current.setDate(current.getDate() + 1);
+function parseDayKey(value) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : toDayKey(value);
   }
-  return result;
+  const str = String(value ?? "");
+  const plain = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (plain) return plain[0];
+
+  const parsed = new Date(str);
+  return Number.isNaN(parsed.getTime()) ? null : toDayKey(parsed);
 }
 
-export function ChartBarInteractive({ data = [], title = "Clicks Summary", description = "Showing user clicks over time", height =260 }) {
-  const ranges = [
-    { key: "7", label: "Last 7 Days" },
-    { key: "30", label: "Last 30 Days" },
-    { key: "365", label: "Last 1 Year" },
-  ];
+function dayKeyToDate(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 
+function eachDay(startKey, endKey) {
+  const out = [];
+  const cursor = dayKeyToDate(startKey);
+  const end = dayKeyToDate(endKey);
+  while (cursor <= end) {
+    out.push(toDayKey(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
+function shiftDays(key, days) {
+  const d = dayKeyToDate(key);
+  d.setDate(d.getDate() + days);
+  return toDayKey(d);
+}
+
+export function ChartBarInteractive({
+  data = [],
+  title = "Clicks summary",
+  description = "Showing clicks over time",
+  height = 260,
+}) {
   const [activeRange, setActiveRange] = React.useState("7");
 
-  // STEP 1 — CLEAN + SORT
-  const cleanedData = React.useMemo(() => {
-    return data
-      .map((d) => ({
-        date: normalizeDate(d.date),
-        clicks: Number(d.clicks) || 0,
-      }))
-      .filter((d) => d.date !== null)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const byDay = React.useMemo(() => {
+    const map = new Map();
+    for (const row of data) {
+      const key = parseDayKey(row?.date);
+      if (!key) continue;
+      map.set(key, (map.get(key) ?? 0) + (Number(row.clicks) || 0));
+    }
+    return map;
   }, [data]);
 
-  // STEP 2 — PAD INTO FULL DATE RANGE
+  const hasData = byDay.size > 0;
+
+  const todayKey = React.useMemo(() => toDayKey(new Date()), []);
+
+  const windowFor = React.useCallback(
+    (days) => {
+      const latest = hasData
+        ? [...byDay.keys()].sort().at(-1)
+        : todayKey;
+      const end = latest > todayKey ? latest : todayKey;
+      return { start: shiftDays(end, -(days - 1)), end };
+    },
+    [byDay, hasData, todayKey]
+  );
+
   const filteredData = React.useMemo(() => {
-    if (!cleanedData.length) return [];
-
-    const days = parseInt(activeRange, 10);
-
-    const lastDate = new Date(cleanedData.at(-1).date);
-    const start = new Date(lastDate);
-    start.setDate(lastDate.getDate() - (days - 1));
-
-    const fullDates = generateDateRange(start, lastDate);
-    const map = Object.fromEntries(cleanedData.map((d) => [d.date, d.clicks]));
-
-    return fullDates.map((date) => ({
+    const { start, end } = windowFor(parseInt(activeRange, 10));
+    return eachDay(start, end).map((date) => ({
       date,
-      clicks: map[date] ?? 0,
+      clicks: byDay.get(date) ?? 0,
     }));
-  }, [activeRange, cleanedData]);
+  }, [activeRange, byDay, windowFor]);
 
-  // STEP 3 — TOTALS
   const totals = React.useMemo(() => {
-    if (!cleanedData.length) {
-      return { "7": 0, "30": 0, "365": 0 };
-    }
-
-    const getTotal = (rangeDays) =>
-      cleanedData
-        .slice(-Math.min(rangeDays, cleanedData.length))
-        .reduce((sum, d) => sum + d.clicks, 0);
-
-    return {
-      "7": getTotal(7),
-      "30": getTotal(30),
-      "365": getTotal(365),
+    const sumWindow = (days) => {
+      const { start, end } = windowFor(days);
+      let sum = 0;
+      for (const [key, clicks] of byDay) {
+        if (key >= start && key <= end) sum += clicks;
+      }
+      return sum;
     };
-  }, [cleanedData]);
 
-  if (!cleanedData.length) {
+    return { 7: sumWindow(7), 30: sumWindow(30), 365: sumWindow(365) };
+  }, [byDay, windowFor]);
+
+  if (!hasData) {
     return (
-      <Card className="p-6 flex flex-col items-center justify-center h-[250px] text-center">
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>Your click analysis will appear here</CardDescription>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{title}</CardTitle>
+          <CardDescription>
+            Your click analysis will appear here once this link gets traffic.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            className="flex items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
+            style={{ height }}
+          >
+            No clicks yet
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -92,38 +141,70 @@ export function ChartBarInteractive({ data = [], title = "Clicks Summary", descr
     <Card className="py-0">
       <CardHeader className="flex flex-col items-stretch border-b p-0! sm:flex-row">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3">
-          <CardTitle>{title}</CardTitle>
+          <CardTitle className="text-base">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
 
         <div className="flex">
-          {ranges.map((r) => (
+          {RANGES.map((r) => (
             <button
               key={r.key}
+              type="button"
               onClick={() => setActiveRange(r.key)}
               data-active={activeRange === r.key}
-              className="data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
+              aria-pressed={activeRange === r.key}
+              className="flex flex-1 flex-col justify-center gap-1 border-t px-4 py-3 text-left transition-colors even:border-l hover:bg-muted/40 data-[active=true]:bg-muted/50 sm:border-t-0 sm:border-l sm:px-6 sm:py-4"
             >
-              <span className="text-muted-foreground text-xs">{r.label}</span>
-              <span className="text-lg font-bold sm:text-3xl">{totals[r.key]}</span>
+              <span className="text-xs whitespace-nowrap text-muted-foreground">
+                {r.label}
+              </span>
+              <span className="text-lg font-semibold tabular-nums sm:text-2xl">
+                {totals[r.key]}
+              </span>
             </button>
           ))}
         </div>
       </CardHeader>
 
-      <CardContent className="px-2 sm:p-4 pt-0 pb-2">
-        <ChartContainer config={{ clicks: { label: "Clicks", color: "var(--chart-2)" } }} style={{ height: height, width: "100%" }}>
+      <CardContent className="px-2 pt-4 pb-2 sm:p-4">
+        <ChartContainer
+          config={{ clicks: { label: "Clicks", color: "var(--chart-2)" } }}
+          style={{ height, width: "100%" }}
+        >
           <BarChart data={filteredData} margin={{ left: 12, right: 12 }}>
             <CartesianGrid vertical={false} />
-
             <XAxis
               dataKey="date"
-              tickFormatter={(v) => new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              minTickGap={24}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) =>
+                dayKeyToDate(v).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })
+              }
             />
-  {/* <YAxis domain={[0, (dataMax) => dataMax * 2]} hide /> */}
-            <ChartTooltip content={<ChartTooltipContent nameKey="clicks" />} />
-
-            <Bar dataKey="clicks" fill="var(--chart-2)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  nameKey="clicks"
+                  labelFormatter={(v) =>
+                    dayKeyToDate(v).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  }
+                />
+              }
+            />
+            <Bar
+              dataKey="clicks"
+              fill="var(--color-clicks)"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={50}
+            />
           </BarChart>
         </ChartContainer>
       </CardContent>

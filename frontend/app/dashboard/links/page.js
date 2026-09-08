@@ -1,479 +1,431 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  Search,
-  Calendar,
-  SlidersHorizontal,
-  Lock,
-  Tag,
-  Edit,
-  Share2,
   BarChart2,
-  MoreHorizontal,
+  Calendar,
+  Check,
   Copy,
   ExternalLink,
-   Plus, 
-   Link2 
+  Link2,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Trash2,
 } from "lucide-react";
-import ConfirmDialog from "@/components/confirm-dialog";
-import useApi from "@/hooks/useApi";
-import AlertDemo from "@/components/alertdialog";
 
-// ------------------------------------------------------
-// Helper: Auto-generate title from original URL
-// ------------------------------------------------------
-function parseTitleFromUrl(url) {
-  try {
-    const hostname = new URL(url).hostname; // google.com
-    const name = hostname.replace("www.", "").split(".")[0]; // google
-    return name.charAt(0).toUpperCase() + name.slice(1); // Google
-  } catch {
-    return "Untitled";
-  }
-}
+import useApi from "@/hooks/useApi";
+import { faviconFor, shortUrl, shortUrlLabel, titleFromUrl } from "@/lib/links";
+import ConfirmDialog from "@/components/confirm-dialog";
+import ToastAlert from "@/components/alertdialog";
+import { DropdownMenuDemo } from "@/components/dropdown";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function LinkCardSkeleton() {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 mb-4 animate-pulse">
-      <div className="flex items-start gap-4">
-
-        {/* Checkbox */}
-        <div className="w-4 h-4 rounded border border-gray-300 bg-gray-200"></div>
-
-        {/* Icon Circle */}
-        <div className="w-10 h-10 rounded-full bg-gray-200"></div>
-
-        {/* Text Section */}
+    <Card>
+      <CardContent className="flex items-start gap-4 p-5">
+        <Skeleton className="mt-1 size-4 rounded-sm" />
+        <Skeleton className="size-10 shrink-0 rounded-full" />
         <div className="flex-1 space-y-3">
-
-          {/* Title */}
-          <div className="h-4 w-40 bg-gray-200 rounded"></div>
-
-          {/* Short link */}
-          <div className="h-3 w-52 bg-gray-200 rounded"></div>
-
-          {/* Destination URL */}
-          <div className="h-3 w-64 bg-gray-200 rounded"></div>
-
-          {/* Metadata Row */}
-          <div className="flex gap-6 mt-2">
-            <div className="h-3 w-20 bg-gray-200 rounded"></div>
-            <div className="h-3 w-24 bg-gray-200 rounded"></div>
-            <div className="h-3 w-16 bg-gray-200 rounded"></div>
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-52" />
+          <Skeleton className="h-4 w-64" />
+          <div className="flex gap-6 pt-1">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-3 w-24" />
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gray-200 rounded"></div>
-          <div className="w-8 h-8 bg-gray-200 rounded"></div>
-          <div className="w-8 h-8 bg-gray-200 rounded"></div>
-          <div className="w-8 h-8 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
-function NoLinksComponent(){
+function EmptyState() {
   return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-8">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-          {/* Vector Art Illustration */}
-          <div className="mb-6 relative">
-            <svg viewBox="0 0 200 200" className="w-full h-48 mx-auto">
-              {/* Background circles */}
-              <circle cx="100" cy="100" r="80" fill="#EEF2FF" opacity="0.5"/>
-              <circle cx="100" cy="100" r="60" fill="#DDD6FE" opacity="0.3"/>
-              
-              {/* Chain links */}
-              <g transform="translate(60, 80)">
-                <ellipse cx="20" cy="20" rx="15" ry="20" fill="none" stroke="#6366F1" strokeWidth="4" strokeDasharray="3,3" opacity="0.4"/>
-                <ellipse cx="45" cy="20" rx="15" ry="20" fill="none" stroke="#6366F1" strokeWidth="4" strokeDasharray="3,3" opacity="0.4"/>
-              </g>
-              
-              {/* Center plus icon */}
-              <circle cx="100" cy="100" r="25" fill="#6366F1"/>
-              <line x1="100" y1="85" x2="100" y2="115" stroke="white" strokeWidth="4" strokeLinecap="round"/>
-              <line x1="85" y1="100" x2="115" y2="100" stroke="white" strokeWidth="4" strokeLinecap="round"/>
-              
-              {/* Decorative dots */}
-              <circle cx="40" cy="60" r="4" fill="#A5B4FC" opacity="0.6"/>
-              <circle cx="160" cy="70" r="3" fill="#A5B4FC" opacity="0.6"/>
-              <circle cx="50" cy="140" r="5" fill="#C7D2FE" opacity="0.6"/>
-              <circle cx="150" cy="130" r="4" fill="#C7D2FE" opacity="0.6"/>
-            </svg>
-          </div>
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
+        <span className="flex size-12 items-center justify-center rounded-full bg-muted">
+          <Link2 className="size-6 text-muted-foreground" />
+        </span>
 
-          {/* Text Content */}
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              No Links Yet
-            </h2>
-            <p className="text-gray-600">
-              Start building your collection by creating your first link
-            </p>
-          </div>
-
-          {/* Create First Link Button */}
-          <button 
-            onClick={() => window.location.href = "/dashboard/links/create"}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            <Plus size={20} />
-            Create Your First Link
-          </button>
-
-          {/* Optional secondary text */}
-          <p className="text-center text-sm text-gray-500 mt-4">
-            It only takes a few seconds
+        <div className="space-y-1.5">
+          <h2 className="text-lg font-semibold">No links yet</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Shorten your first URL and it will show up here with its click
+            history.
           </p>
         </div>
-      </div>
-    )
+
+        <Button asChild className="gap-2">
+          <Link href="/dashboard/links/create">
+            <Plus className="size-4" />
+            Create your first link
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LinkRow({ link, selected, onSelect, onCopy, copied, onRequestDelete }) {
+  const favicon = faviconFor(link.dest);
+
+  return (
+    <Card className="transition-shadow hover:shadow-sm">
+      <CardContent className="flex items-start gap-3 p-5 sm:gap-4">
+        <Checkbox
+          checked={selected}
+          onCheckedChange={(value) => onSelect(link.id, Boolean(value))}
+          aria-label={`Select ${link.title}`}
+          className="mt-1.5"
+        />
+
+        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+          {favicon ? (
+            <Image
+              width={24}
+              height={24}
+              src={favicon}
+              alt=""
+              className="size-6"
+              unoptimized
+            />
+          ) : (
+            <Link2 className="size-4 text-muted-foreground" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-base font-semibold">
+            <Link
+              href={`/dashboard/${link.id}`}
+              className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              {link.title}
+            </Link>
+          </h3>
+
+          <div className="mt-1 flex items-center gap-1.5">
+            <a
+              href={link.shortHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="truncate text-sm font-medium text-primary hover:underline"
+            >
+              {link.shortLabel}
+            </a>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0"
+              onClick={() => onCopy(link)}
+              aria-label={`Copy short link for ${link.title}`}
+            >
+              {copied ? (
+                <Check className="size-3.5 text-success" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+            </Button>
+          </div>
+
+          <a
+            href={link.dest}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground hover:underline"
+          >
+            <ExternalLink className="size-3.5 shrink-0" />
+            <span className="truncate">{link.dest}</span>
+          </a>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <BarChart2 className="size-3.5" />
+              {link.clicks} {link.clicks === 1 ? "click" : "clicks"}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Calendar className="size-3.5" />
+              {link.date}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          <Button asChild variant="ghost" size="icon" aria-label="View analytics">
+            <Link href={`/dashboard/${link.id}`}>
+              <BarChart2 className="size-4" />
+            </Link>
+          </Button>
+
+          <DropdownMenuDemo
+            trigger={
+              <Button variant="ghost" size="icon" aria-label="More actions">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            }
+            items={[
+              {
+                label: "Copy short link",
+                icon: <Copy size={16} />,
+                onClick: () => onCopy(link),
+              },
+              {
+                label: "Delete",
+                icon: <Trash2 size={16} />,
+                onClick: () => onRequestDelete(link.id),
+              },
+            ]}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function LinksPage() {
-  const [viewMode, setViewMode] = useState("list");
-  const [links, setLinks] = useState(["some","links"]);
-  const [selectedLinks, setSelectedLinks] = useState([]);
-  const [alert, setAlert] = useState(null);
+  const [links, setLinks] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [query, setQuery] = useState("");
+  const [toast, setToast] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState(null);
 
+  const listApi = useApi("/url/get");
+  const deleteApi = useApi(null, { method: "DELETE" });
 
-  const { data, error, loading, request } = useApi("/url/get");
-  const {
-    data: deleteData,
-    loading: deleteLoading,
-    request: deleteRequest,
-    error: deleteError
-  } = useApi(null, { method: "DELETE" });
+  const { request: loadLinks } = listApi;
 
-  const router = useRouter();
-
-  // ------------------------------------------------------
-  // Fetch URLs from API and format them
-  // ------------------------------------------------------
   useEffect(() => {
-    async function load() {
-      const res = await request();
-      if (!res?.data) return;
+    let active = true;
 
-      const formatted = res.data.map((item) => ({
-        id: item.id,
-        title: parseTitleFromUrl(item.original_url),
-        short: `${process.env.NEXT_PUBLIC_BASE_URL}/${item.short_code}`,
-        dest: item.original_url,
-        clicks: item.total_clicks ?? 0,
-        date: new Date(item.created_at).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        tags: "No tags",
-      }));
+    (async () => {
+      const res = await loadLinks();
+      if (!active) return;
 
-      setLinks(formatted);
-    }
-
-    load();
-  }, [request]);
-
-
-
-  const handleCheckboxchange = (e, linkId) => {
-    if (e.target.checked) {
-      setSelectedLinks([...selectedLinks, linkId]);
-    } else {
-      setSelectedLinks(selectedLinks.filter(id => id !== linkId));
-    }
-    console.log(selectedLinks);
-  }
-
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      const allLinkIds = links.map(link => link.id);
-      setSelectedLinks(allLinkIds);
-    } else {
-      setSelectedLinks([]);
-    }
-  }
-
-  const handleDeleteLinks = async () => {
-
-    // React has prblem w
-    let hasError = false;
-
-    for (const linkId of selectedLinks) {
-      const res = await deleteRequest(null, `/url/delete/${linkId}`, "DELETE");
-
-      if (!res) {
-        hasError = true;
+      if (res?.data) {
+        setLinks(
+          res.data.map((item) => ({
+            id: item.id,
+            title: item.title?.trim() || titleFromUrl(item.original_url),
+            shortHref: shortUrl(item.short_code),
+            shortLabel: shortUrlLabel(item.short_code),
+            dest: item.original_url,
+            clicks: item.total_clicks ?? 0,
+            date: new Date(item.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+          }))
+        );
       }
-    }
+      setLoaded(true);
+    })();
 
-    if (hasError) {
-      setAlert({
+    return () => {
+      active = false;
+    };
+  }, [loadLinks]);
+
+  useEffect(() => {
+    if (copiedId === null) return;
+    const t = setTimeout(() => setCopiedId(null), 2000);
+    return () => clearTimeout(t);
+  }, [copiedId]);
+
+  const visibleLinks = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return links;
+    return links.filter(
+      (l) =>
+        l.title.toLowerCase().includes(q) ||
+        l.dest.toLowerCase().includes(q) ||
+        l.shortLabel.toLowerCase().includes(q)
+    );
+  }, [links, query]);
+
+  const visibleIds = visibleLinks.map((l) => l.id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
+
+  const handleSelect = (id, checked) => {
+    setSelectedIds((prev) =>
+      checked ? [...new Set([...prev, id])] : prev.filter((x) => x !== id)
+    );
+  };
+
+  const handleSelectAll = (checked) => {
+    setSelectedIds(checked ? visibleIds : []);
+  };
+
+  const handleCopy = async (link) => {
+    try {
+      await navigator.clipboard.writeText(link.shortHref);
+      setCopiedId(link.id);
+    } catch {
+      setToast({
         type: "error",
-        message: "Error deleting links",
-        description: "One or more links failed to delete.",
+        message: "Couldn't copy",
+        description: "Your browser blocked clipboard access.",
       });
-      return;
+    }
+  };
+
+  const handleDelete = async () => {
+    const ids = pendingDeleteIds ?? [];
+    setPendingDeleteIds(null);
+    if (!ids.length) return;
+
+    const failed = [];
+    for (const id of ids) {
+      const res = await deleteApi.request(null, `/url/delete/${id}`, "DELETE");
+      if (!res) failed.push(id);
     }
 
-    setLinks(links.filter(link => !selectedLinks.includes(link.id)));
-    setAlert({
-      type: "success",
-      message: "Links deleted",
-      description: `${selectedLinks.length} link(s) removed successfully`,
-    });
+    const deleted = ids.filter((id) => !failed.includes(id));
+    if (deleted.length) {
+      setLinks((prev) => prev.filter((l) => !deleted.includes(l.id)));
+    }
+    setSelectedIds((prev) => prev.filter((id) => !deleted.includes(id)));
 
-    setSelectedLinks([]);
+    setToast(
+      failed.length
+        ? {
+            type: "error",
+            message: "Some links could not be deleted",
+            description: `${deleted.length} removed, ${failed.length} failed.`,
+          }
+        : {
+            type: "success",
+            message: "Links deleted",
+            description: `${deleted.length} link${
+              deleted.length === 1 ? "" : "s"
+            } removed.`,
+          }
+    );
   };
 
-
-
-  if (links.length === 0) {
-    return <>
-    <NoLinksComponent/>
-    </>;
-  };
-
-
-  {/* Main content */}  
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="mx-auto w-full max-w-5xl p-4 sm:p-6">
+      {toast && <ToastAlert key={toast.message + toast.description} {...toast} />}
 
-      {alert && (
-        <AlertDemo {...alert} />
-      )}
+      <ConfirmDialog
+        open={pendingDeleteIds !== null}
+        setOpen={(open) => !open && setPendingDeleteIds(null)}
+        title={
+          pendingDeleteIds?.length === 1 ? "Delete link" : "Delete links"
+        }
+        description={`Are you sure you want to delete ${
+          pendingDeleteIds?.length ?? 0
+        } link(s)? This also removes their click history and cannot be undone.`}
+        confirmText="Delete"
+        onConfirm={handleDelete}
+      />
 
-      {/* HEADER */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 w-full">
-        <div className="flex items-center justify-between w-full">
-          <h1 className="text-3xl font-bold text-gray-900">Snapped Links</h1>
-          <button onClick={() => router.push('/dashboard/links/create')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
-            + Create link
-          </button>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Snapped links
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {loaded
+              ? `${links.length} link${links.length === 1 ? "" : "s"}`
+              : "Loading your links..."}
+          </p>
         </div>
+
+        <Button asChild className="gap-2">
+          <Link href="/dashboard/links/create">
+            <Plus className="size-4" />
+            Create link
+          </Link>
+        </Button>
       </div>
 
-
-      {/* FILTER BAR */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center gap-3 w-full">
-          <div className="flex-1 max-w-md relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search links"
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-            <Calendar className="w-4 h-4 text-gray-600" />
-            <span className="text-sm text-gray-700">Filter by created date</span>
-          </button>
-
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-            <SlidersHorizontal className="w-4 h-4 text-gray-600" />
-            <span className="text-sm text-gray-700">Add filters</span>
-          </button>
+      {!loaded ? (
+        <div className="space-y-4">
+          <LinkCardSkeleton />
+          <LinkCardSkeleton />
+          <LinkCardSkeleton />
         </div>
-      </div>
-      {/* ACTION BAR */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3">
-        <div className="flex items-center justify-between w-full">
+      ) : links.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="relative min-w-0 flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search links"
+                aria-label="Search links"
+                className="pl-9"
+              />
+            </div>
 
-          <div className="flex items-center gap-4">
-            <input
-              onChange={(e) => handleSelectAll(e)}
-              type="checkbox"
-              checked={selectedLinks.length === links.length && links.length > 0}
-              className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-600">{selectedLinks.length} selected</span>
-            <button className="flex items-center gap-1 text-sm text-gray-400 cursor-not-allowed disabled:opacity-50">
-              <Lock className="w-4 h-4" />
-              <span>Export</span>
-            </button>
-            {(selectedLinks.length > 0) ? (
-              <>
-                <ConfirmDialog
-                  trigger={<button disabled={deleteLoading} className="text-sm text-blue-500 hover:text-blue-700 font-semibold">{deleteLoading ? "Deleting..." : "Delete"}</button>}
-                  title="Delete Links"
-                  description={`Are you sure you want to delete ${selectedLinks.length} selected link(s)? This action cannot be undone.`}
-                  confirmText="Delete"
-                  onConfirm={handleDeleteLinks}
+            <div className="flex items-center gap-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={(v) => handleSelectAll(Boolean(v))}
+                  aria-label="Select all links"
                 />
-                <ConfirmDialog
-                  trigger={<button className="text-sm text-blue-500 hover:text-blue-700 font-semibold">Tag</button>}
-                  title="Tag Links"
-                  description={`Tagging functionality is not implemented yet.`}
-                  confirmText="OK"
-                />
-              </>
-            ) : (
-              <>
-                <button className="text-sm text-gray-400 font-semibold">Delete</button>
-                <button className="text-sm text-gray-400 font-semibold">Tag</button>
-              </>
-            )}
+                Select all
+              </label>
+
+              {selectedIds.length > 0 && (
+                <>
+                  <span className="text-sm text-muted-foreground">
+                    {selectedIds.length} selected
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                    disabled={deleteApi.loading}
+                    onClick={() => setPendingDeleteIds(selectedIds)}
+                  >
+                    <Trash2 className="size-4" />
+                    {deleteApi.loading ? "Deleting..." : "Delete"}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
-          {deleteError && (
-            <div className="text-red-500 text-sm">
-              {deleteError.message || "An error occurred while deleting links."}
+
+          {visibleLinks.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                No links match “{query}”.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {visibleLinks.map((link) => (
+                <LinkRow
+                  key={link.id}
+                  link={link}
+                  selected={selectedIds.includes(link.id)}
+                  onSelect={handleSelect}
+                  onCopy={handleCopy}
+                  copied={copiedId === link.id}
+                  onRequestDelete={(id) => setPendingDeleteIds([id])}
+                />
+              ))}
             </div>
           )}
-          <div className="flex items-center gap-4">
-            {/* <div className="flex items-center gap-1 border border-gray-300 rounded-md p-1">
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 rounded ${
-                  viewMode === "list" ? "bg-gray-100" : "hover:bg-gray-50"
-                }`}
-              >
-                <List className="w-4 h-4 text-gray-600" />
-              </button>
-
-              <button
-                onClick={() => setViewMode("columns")}
-                className={`p-1.5 rounded ${
-                  viewMode === "columns" ? "bg-gray-100" : "hover:bg-gray-50"
-                }`}
-              >
-                <Columns className="w-4 h-4 text-gray-600" />
-              </button>
-
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded ${
-                  viewMode === "grid" ? "bg-gray-100" : "hover:bg-gray-50"
-                }`}
-              >
-                <Grid className="w-4 h-4 text-gray-600" />
-              </button>
-            </div> */}
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Show:</span>
-              <select className="text-sm border border-gray-300 rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option>Active</option>
-                <option>Archived</option>
-                <option>All</option>
-              </select>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* LINK LIST */}
-      {loading ? (
-        <>
-          <LinkCardSkeleton />
-          <LinkCardSkeleton />
-          <LinkCardSkeleton />
         </>
-      ) : null}
-      <div className="px-6 py-6 w-full">
-
-        {links.map((link) => (
-          <div
-            key={link.id}
-            className="bg-white rounded-lg border border-gray-200 p-6 mb-4 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start gap-4">
-
-              <input
-                onChange={(e) => handleCheckboxchange(e, link.id)}
-                checked={selectedLinks.includes(link.id)}
-                type="checkbox"
-                className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-
-              <div className="shrink-0 w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                <Image width={24} height={24} src={`https://www.google.com/s2/favicons?domain=${link.dest}`} alt="Favicon" className="w-6 h-6" />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 ">
-                  <Link className="hover:underline cursor-pointer" href={`/dashboard/${link.id}`}>
-                    {link.title}
-                  </Link>
-                </h3>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <a
-                    href={link.short}
-                    target="_blank"
-                    className="text-blue-600 hover:underline font-medium"
-                  >
-                    {link.short}
-                  </a>
-                  <button onClick={() => { navigator.clipboard.writeText(link.short) }} className="text-gray-400 hover:text-gray-600">
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-3 hover:underline cursor-pointer">
-                  <ExternalLink className="w-4 h-4" />
-                  <span>{link.dest}</span>
-                </div>
-
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1.5">
-                    <BarChart2 className="w-4 h-4" />
-                    <span>{link.clicks} clicks</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4" />
-                    <span>{link.date}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <Tag className="w-4 h-4" />
-                    <span>{link.tags}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button className="p-2 hover:bg-gray-100 rounded-md">
-                  <Edit className="w-4 h-4 text-gray-600" />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-md">
-                  <Share2 className="w-4 h-4 text-gray-600" />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-md">
-                  <Link href={`/dashboard/${link.id}`}><BarChart2 className="w-4 h-4 text-gray-600" /></Link>
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-md">
-                  <MoreHorizontal className="w-4 h-4 text-gray-600" />
-                </button>
-              </div>
-
-            </div>
-          </div>
-        ))}
-
-
-
-        {/* END OF LINKS */}
-        <div className="text-center py-8">
-          <div className="flex items-center justify-center gap-4 text-gray-400">
-            <div className="h-px bg-gray-300 w-20"></div>
-            <span className="text-sm">You've reached the end of your links</span>
-            <div className="h-px bg-gray-300 w-20"></div>
-          </div>
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }

@@ -28,6 +28,8 @@ export const ClickModel = {
         original_url,
         short_code,
         custom_alias,
+        title,
+        expires_at,
         created_at,
         total_clicks
       FROM urls

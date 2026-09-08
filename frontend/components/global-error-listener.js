@@ -2,27 +2,41 @@
 
 import { useEffect } from "react";
 import { useErrorStore } from "@/store/useErrorStore";
-import ToastAlert from "@/components/alertdialog.js";
+import ToastAlert from "@/components/alertdialog";
+
+const TOAST_MS = 5000;
+
+function friendlyMessage(error) {
+  if (/timeout of \d+ms exceeded/i.test(error)) {
+    return "Our backend is starting up. Please wait a few seconds and try again.";
+  }
+  if (/network error/i.test(error)) {
+    return "Can't reach the server. Check your connection and try again.";
+  }
+  return error;
+}
 
 export default function GlobalErrorListener() {
-  let { error, clearError } = useErrorStore();
+  const error = useErrorStore((s) => s.error);
+  const errorId = useErrorStore((s) => s.errorId);
+  const clearError = useErrorStore((s) => s.clearError);
 
   useEffect(() => {
     if (!error) return;
 
-    const t = setTimeout(() => clearError(), 3000);
+    const t = setTimeout(() => clearError(), TOAST_MS + 500);
     return () => clearTimeout(t);
-  }, [error]);
+  }, [error, errorId, clearError]);
 
   if (!error) return null;
-  if (error==="timeout of 10000ms exceeded"){
-    error = "Our backend server is Starting up Please wait upto 7-8 seconds then try again"
-  }
+
   return (
     <ToastAlert
+      key={errorId}
       type="destructive"
-      message="Error"
-      description={error}
+      message="Something went wrong"
+      description={friendlyMessage(error)}
+      duration={TOAST_MS}
     />
   );
 }

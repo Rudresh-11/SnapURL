@@ -1,105 +1,120 @@
-import { getDB } from "../src/config/db.js";
-import connectDB from "../src/config/db.js";
-import "../src/config/loadEnv.js"
+import "../src/config/loadEnv.js";
+import bcrypt from "bcrypt";
+import connectDB, { getDB } from "../src/config/db.js";
 
+const SEED_PASSWORD = "password123";
 
-async function seed() {
-  await connectDB()
-  const db = getDB();
+const SEED_USERS = [
+  { username: "rudresh", email: "rudresh@example.com" },
+  { username: "john_doe", email: "john@example.com" },
+  { username: "alice99", email: "alice@example.com" },
+];
 
-  console.log("🌱 Seeding database...");
+const SEED_URLS = [
+  { originalUrl: "https://google.com", shortCode: "ggl123", alias: null, title: "Google" },
+  { originalUrl: "https://youtube.com", shortCode: "ytb456", alias: null, title: "Youtube" },
+  { originalUrl: "https://instagram.com", shortCode: "inst789", alias: "insta", title: "Instagram" },
+];
 
-  try {
-    // =======================
-    // 1. CLEAR existing data
-    // =======================
-    // await db.query("DELETE FROM clicks;");
-    // await db.query("DELETE FROM urls;");
-    // await db.query("DELETE FROM users;");
+const DEVICE_TYPES = ["Mobile", "Desktop", "Tablet"];
+const COUNTRIES = ["India", "United States", "United Kingdom", "Canada", "Germany"];
+const REFERRERS = [
+  "https://google.com",
+  "https://instagram.com",
+  "https://facebook.com",
+  "Direct",
+  "https://twitter.com",
+];
 
-    // =======================
-    // 2. Seed Users
-    // =======================
-    const passwordHash = "password123";
+const CLICKS_PER_URL = 20;
+const SPREAD_DAYS = 30;
 
-    const userResults = await db.query(
-      `
-      INSERT INTO users (username, email, password_hash)
-      VALUES 
-      ('rudresh', 'rudresh@example.com', $1),
-      ('john_doe', 'john@example.com', $1),
-      ('alice99', 'alice@example.com', $1)
-      RETURNING id, username, email;
-      `,
-      [passwordHash]
-    );
-
-    console.log("👤 Users added:", userResults.rows.length);
-
-    // =======================
-    // 3. Seed URLs
-    // =======================
-    const urlResults = await db.query(
-      `
-      INSERT INTO urls (user_id, original_url, short_code, custom_alias, expires_at, total_clicks)
-      VALUES
-        ($1, 'https://google.com', 'ggl123', NULL, NULL, 0),
-        ($2, 'https://youtube.com', 'ytb456', NULL, NULL, 0),
-        ($3, 'https://instagram.com', 'inst789', 'insta', NULL, 0)
-      RETURNING id, user_id, short_code;
-      `,
-      [
-        userResults.rows[0].id,
-        userResults.rows[1].id,
-        userResults.rows[2].id
-      ]
-    );
-
-    console.log("🔗 URLs added:", urlResults.rows.length);
-
-    // =======================
-    // 4. Seed Click Records
-    // =======================
-    const clickData = [];
-
-    const deviceTypes = ["Mobile", "Desktop", "Tablet"];
-    const countries = ["IN", "US", "UK", "CA", "DE"];
-    const referrers = [
-      "https://google.com",
-      "https://instagram.com",
-      "https://facebook.com",
-      null,
-      "https://twitter.com"
-    ];
-
-    for (let url of urlResults.rows) {
-      for (let i = 0; i < 20; i++) {
-        clickData.push({
-          url_id: url.id,
-          ip: `192.168.1.${Math.floor(Math.random() * 255)}`,
-          country: countries[Math.floor(Math.random() * countries.length)],
-          device: deviceTypes[Math.floor(Math.random() * deviceTypes.length)],
-          referrer: referrers[Math.floor(Math.random() * referrers.length)]
-        });
-      }
-    }
-
-    for (let click of clickData) {
-      await db.query(
-        `
-        INSERT INTO clicks (url_id, ip_address, country, device_type, referrer)
-        VALUES ($1, $2, $3, $4, $5);
-        `,
-        [click.url_id, click.ip, click.country, click.device, click.referrer]
-      );
-    }
-
-    console.log("📊 Click analytics added:", clickData.length);
-
-    console.log("✅ Database seeding complete!");
-  } catch (err) {
-    console.error("❌ Seeding error:", err);
-  }
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)];
 }
 
-seed();
+async function seed() {
+  await connectDB();
+  const db = getDB();
+
+  console.log("Seeding database...");
+
+  const emails = SEED_USERS.map((u) => u.email);
+  const del = await db.query("DELETE FROM users WHERE email = ANY($1::text[])", [emails]);
+  console.log(`Cleared ${del.rowCount} existing seed user(s) and their links`);
+
+  const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10);
+
+  const userRows = [];
+  for (const user of SEED_USERS) {
+    const res = await db.query(
+      `INSERT INTO users (username, email, password_hash, provider)
+       VALUES ($1, $2, $3, 'local')
+       RETURNING id, username, email;`,
+      [user.username, user.email, passwordHash]
+    );
+    userRows.push(res.rows[0]);
+  }
+  console.log(`Users added: ${userRows.length}`);
+
+  const urlRows = [];
+  for (let i = 0; i < SEED_URLS.length; i++) {
+    const url = SEED_URLS[i];
+    const res = await db.query(
+      `INSERT INTO urls (user_id, original_url, short_code, custom_alias, expires_at, total_clicks, title)
+       VALUES ($1, $2, $3, $4, NULL, 0, $5)
+       RETURNING id, user_id, short_code;`,
+      [userRows[i].id, url.originalUrl, url.shortCode, url.alias, url.title]
+    );
+    urlRows.push(res.rows[0]);
+  }
+  console.log(`URLs added: ${urlRows.length}`);
+
+  let clickCount = 0;
+  for (const url of urlRows) {
+    for (let i = 0; i < CLICKS_PER_URL; i++) {
+      const daysAgo = Math.floor(Math.random() * SPREAD_DAYS);
+      const clickedAt = new Date();
+      clickedAt.setDate(clickedAt.getDate() - daysAgo);
+      clickedAt.setHours(Math.floor(Math.random() * 24), Math.floor(Math.random() * 60), 0, 0);
+
+      await db.query(
+        `INSERT INTO clicks (url_id, ip_address, country, device_type, referrer, clicked_at)
+         VALUES ($1, $2, $3, $4, $5, $6);`,
+        [
+          url.id,
+          `192.168.1.${Math.floor(Math.random() * 255)}`,
+          pick(COUNTRIES),
+          pick(DEVICE_TYPES),
+          pick(REFERRERS),
+          clickedAt.toISOString(),
+        ]
+      );
+      clickCount++;
+    }
+  }
+  console.log(`Click analytics added: ${clickCount}`);
+
+  await db.query(
+    `UPDATE urls u
+        SET total_clicks = (SELECT COUNT(*) FROM clicks c WHERE c.url_id = u.id)
+      WHERE u.id = ANY($1::int[]);`,
+    [urlRows.map((u) => u.id)]
+  );
+
+  console.log("Database seeding complete");
+  console.log(`Sign in with ${SEED_USERS[0].email} / ${SEED_PASSWORD}`);
+}
+
+seed()
+  .then(async () => {
+    await getDB().end();
+    process.exit(0);
+  })
+  .catch(async (err) => {
+    console.error("Seeding error:", err.message || err);
+    try {
+      await getDB().end();
+    } catch {}
+    process.exit(1);
+  });

@@ -1,14 +1,14 @@
 import { getDB } from "../config/db.js";
 
 export const UrlModel = {
-  async createUrl(userId, originalUrl, shortCode, customAlias, expiresAt) {
+  async createUrl(userId, originalUrl, shortCode, customAlias, expiresAt, title = null) {
     const db = getDB();
     const query = `
-      INSERT INTO urls (user_id, original_url, short_code, custom_alias, expires_at)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, short_code, original_url, created_at;
+      INSERT INTO urls (user_id, original_url, short_code, custom_alias, expires_at, title)
+      VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'Untitled'))
+      RETURNING id, short_code, original_url, custom_alias, title, expires_at, created_at;
     `;
-    const values = [userId, originalUrl, shortCode, customAlias, expiresAt];
+    const values = [userId, originalUrl, shortCode, customAlias, expiresAt, title];
     const result = await db.query(query, values);
     return result.rows[0];
   },

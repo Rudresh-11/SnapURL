@@ -1,342 +1,350 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
-  Link2,
-  BarChart,
-  ShieldCheck,
-  ChevronDown,
-  Users,
-  MousePointerClick,
-  Layers,
+  BarChart3,
   Check,
+  Copy,
+  Layers,
+  Link2,
+  Loader2,
+  Menu,
+  MousePointerClick,
+  ShieldCheck,
+  Users,
+  X,
 } from "lucide-react";
+
 import useApi from "@/hooks/useApi";
+import { shortUrl, shortUrlLabel } from "@/lib/links";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+const DEMO_FLAG = "snapurl_demo_created";
+
+function readDemoFlag() {
+  try {
+    return Boolean(localStorage.getItem(DEMO_FLAG));
+  } catch {
+    return false;
+  }
+}
+
+const features = [
+  {
+    icon: Link2,
+    title: "Shorten instantly",
+    body: "Turn any long URL into a clean, shareable link — with an optional custom back-half.",
+  },
+  {
+    icon: BarChart3,
+    title: "Real-time analytics",
+    body: "See every click broken down by day, device, country, and referrer.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Links you control",
+    body: "Keep every link in one dashboard, and delete any of them the moment you're done.",
+  },
+];
+
+function GitHubIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M12 .5C5.648.5.5 5.648.5 12a11.5 11.5 0 0 0 7.85 10.94c.575.106.785-.25.785-.556 0-.275-.01-1.002-.015-1.967-3.194.695-3.87-1.542-3.87-1.542-.523-1.33-1.28-1.684-1.28-1.684-1.046-.715.08-.7.08-.7 1.158.082 1.77 1.19 1.77 1.19 1.03 1.766 2.705 1.255 3.365.96.105-.75.403-1.255.73-1.545-2.55-.29-5.228-1.275-5.228-5.673 0-1.253.447-2.276 1.18-3.076-.12-.29-.51-1.455.11-3.03 0 0 .96-.307 3.15 1.175A10.95 10.95 0 0 1 12 6.34c.97.005 1.95.13 2.865.38 2.19-1.482 3.15-1.175 3.15-1.175.62 1.575.23 2.74.115 3.03.73.8 1.175 1.823 1.175 3.076 0 4.41-2.685 5.38-5.245 5.66.41.35.79 1.06.79 2.155 0 1.557-.015 2.812-.015 3.19 0 .31.205.67.795.555A11.5 11.5 0 0 0 23.5 12C23.5 5.648 18.352.5 12 .5Z" />
+    </svg>
+  );
+}
+
+function StatCard({ icon: Icon, value, label }) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
+        <Icon className="size-7 text-primary" />
+        <p className="text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
+          {value}
+        </p>
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function LandingPage() {
-  const [error, setError] = useState(null)
-  const [orignal, setorignal] = useState("")
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [originalUrl, setOriginalUrl] = useState("");
+  const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [demoUsed, setDemoUsed] = useState(false);
 
-  const demoApi = useApi("/url/demoshorten", { method: "POST" })
-  const statsApi = useApi("/analytics/stats", { auto: true, method: "GET" })
+  const demoApi = useApi("/url/demoshorten", { method: "POST" });
+  const statsApi = useApi("/analytics/stats", { auto: true, method: "GET" });
 
   const statsData = statsApi.data?.data || null;
-  let statsError = statsApi.error;
-  const statsLoading = statsApi.loading;
+  const createdCode = demoApi.data?.data?.short_code;
 
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
 
-  const handleShorten = async () => {
+  const handleShorten = async (e) => {
+    e.preventDefault();
     setError(null);
 
-    const alreadyUsed = localStorage.getItem("snapurl_demo_created");
-    if (alreadyUsed) {
-      setError("You’ve reached the free limit. Create an account to continue.");
+    if (demoUsed || readDemoFlag()) {
+      setError("You've used your free demo link. Create an account to continue.");
+      setDemoUsed(true);
+      return;
+    }
+    if (!originalUrl.trim()) {
+      setError("Paste a URL to shorten first.");
       return;
     }
 
-    if (!orignal.trim()) {
-      setError("Insert original URL first");
+    const res = await demoApi.request({ originalUrl: originalUrl.trim() });
+
+    if (!res) {
+      setError(demoApi.errorRef.current || "Could not shorten that link.");
       return;
     }
 
-    const res = await demoApi.request({ originalUrl: orignal });
-
-    if (!res || demoApi.error) {
-      setError(demoApi.error);
-      return;
+    try {
+      localStorage.setItem(DEMO_FLAG, "true");
+    } catch {
     }
-
-    localStorage.setItem("snapurl_demo_created", "true");
+    setDemoUsed(true);
   };
 
-  if (statsError === "timeout of 10000ms exceeded") {
-    statsError = "Our backend is starting up. Please refresh again in 7-8 seconds to view stats";
-  }
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shortUrl(createdCode));
+      setCopied(true);
+    } catch {
+      setError("Couldn't copy — select the link and copy it manually.");
+    }
+  };
+
+  const statsError =
+    statsApi.error && /timeout/i.test(statsApi.error)
+      ? "Our backend is starting up. Refresh in a few seconds to see live stats."
+      : statsApi.error;
+
   return (
-    <div className="min-h-screen ">
-      {/* NAVBAR */}
-      <nav className="sticky top-0 z-40 border-b backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="text-xl font-semibold text-indigo-600">SnapURL</div>
+    <div className="min-h-screen bg-background">
+      <nav className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <Link href="/" className="text-xl font-semibold tracking-tight">
+            SnapURL
+          </Link>
 
-          <div className="hidden md:flex items-center gap-8">
-
-            {/* SERVICES DROPDOWN */}
-            <div className="relative group">
-              <button className="flex items-center gap-1 text-sm text-gray-700 hover:text-indigo-600 transition-colors">
-                Services <ChevronDown size={16} />
-              </button>
-
-              <div
-                className="
-            absolute top-full left-0 mt-2
-            bg-white border border-gray-200 rounded-md shadow-lg py-2 w-48
-            opacity-0 invisible group-hover:opacity-100 group-hover:visible
-            transition-all duration-150
-          "
+          <div className="hidden items-center gap-2 md:flex">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/register">Get started</Link>
+            </Button>
+            <Button asChild variant="ghost" size="icon" aria-label="GitHub repository">
+              <a
+                href="https://github.com/Rudresh-11/SnapURL"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <a href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-                  URL Shortening
-                </a>
-                <a href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-                  Analytics Dashboard
-                </a>
-                <a href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-                  Bot Filtering
-                </a>
-              </div>
-            </div>
-
-            {/* RESOURCES DROPDOWN */}
-            <div className="relative group">
-              <button className="flex items-center gap-1 text-sm text-gray-700 hover:text-indigo-600 transition-colors">
-                Resources <ChevronDown size={16} />
-              </button>
-
-              <div
-                className="
-            absolute top-full left-0 mt-2
-            bg-white border border-gray-200 rounded-md shadow-lg py-2 w-48
-            opacity-0 invisible group-hover:opacity-100 group-hover:visible
-            transition-all duration-150
-          "
-              >
-                <a href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-                  Documentation
-                </a>
-                <a href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-                  API Reference
-                </a>
-                <a href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600">
-                  FAQ
-                </a>
-              </div>
-            </div>
-
-            {/* LOGIN BUTTON WITH BORDER */}
-            <a
-              href="/login"
-              className="
-          text-sm text-gray-700
-          px-4 py-2 border border-gray-300 rounded-md
-          hover:border-indigo-600 hover:text-indigo-600
-          transition-colors
-        "
-            >
-              Login
-            </a>
-
-            {/* GET STARTED */}
-            <a
-              href="/register"
-              className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors"
-            >
-              Get Started
-            </a>
-
-            {/* GITHUB ICON / LINK */}
-            <a
-              href="https://github.com/Rudresh-11/SnapURL"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-700 hover:text-indigo-600 transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 .5C5.648.5.5 5.648.5 12a11.5 11.5 0 0 0 7.85 10.94c.575.106.785-.25.785-.556 0-.275-.01-1.002-.015-1.967-3.194.695-3.87-1.542-3.87-1.542-.523-1.33-1.28-1.684-1.28-1.684-1.046-.715.08-.7.08-.7 1.158.082 1.77 1.19 1.77 1.19 1.03 1.766 2.705 1.255 3.365.96.105-.75.403-1.255.73-1.545-2.55-.29-5.228-1.275-5.228-5.673 0-1.253.447-2.276 1.18-3.076-.12-.29-.51-1.455.11-3.03 0 0 .96-.307 3.15 1.175A10.95 10.95 0 0 1 12 6.34c.97.005 1.95.13 2.865.38 2.19-1.482 3.15-1.175 3.15-1.175.62 1.575.23 2.74.115 3.03.73.8 1.175 1.823 1.175 3.076 0 4.41-2.685 5.38-5.245 5.66.41.35.79 1.06.79 2.155 0 1.557-.015 2.812-.015 3.19 0 .31.205.67.795.555A11.5 11.5 0 0 0 23.5 12C23.5 5.648 18.352.5 12 .5Z" />
-              </svg>
-            </a>
+                <GitHubIcon className="size-5" />
+              </a>
+            </Button>
           </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </Button>
         </div>
+
+        {menuOpen && (
+          <div className="border-t px-6 py-4 md:hidden">
+            <div className="flex flex-col gap-2">
+              <Button asChild variant="outline" onClick={() => setMenuOpen(false)}>
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild onClick={() => setMenuOpen(false)}>
+                <Link href="/register">Get started</Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <a
+                  href="https://github.com/Rudresh-11/SnapURL"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <GitHubIcon className="size-4" />
+                  GitHub
+                </a>
+              </Button>
+            </div>
+          </div>
+        )}
       </nav>
 
-
-      {/* HERO SECTION */}
-      <header className="max-w-4xl mx-auto text-center px-6 pt-20 pb-16">
-        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 leading-tight">
-          Shorten Links. Track Performance.
-          <span className="text-indigo-600"> Instantly.</span>
+      <header className="mx-auto max-w-3xl px-6 pt-20 pb-12 text-center">
+        <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl">
+          Shorten links. Track performance.{" "}
+          <span className="text-primary">Instantly.</span>
         </h1>
 
-        <p className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto">
-          SnapURL helps you shorten long URLs, track analytics, and understand your audience with clean insights.
+        <p className="mx-auto mt-6 max-w-xl text-lg text-pretty text-muted-foreground">
+          SnapURL shortens long URLs, tracks every click, and shows you who is
+          actually opening your links.
         </p>
 
-        <a
-          href="/register"
-          className="inline-flex items-center gap-2 mt-8 px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-        >
-          Start for Free <ArrowRight size={20} />
-        </a>
+        <Button asChild size="lg" className="mt-8 gap-2">
+          <Link href="/register">
+            Start for free
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
       </header>
-      {/* DEMO SECTION */}
-      <section className="max-w-2xl mx-auto px-6 pb-20">
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-800 mb-4">
-            Try shortening a link
-          </h3>
 
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={orignal}
-              onChange={(e) => setorignal(e.target.value)}
-              placeholder="Paste a long URL here"
-              className="flex-1 px-4 py-3 border rounded-md outline-none
-                       focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
+      <section className="mx-auto max-w-2xl px-6 pb-20">
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="mb-4 text-base font-semibold">
+              Try shortening a link
+            </h2>
 
-            <button
-              onClick={handleShorten}
-              className="px-5 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-            >
-              Shorten
-            </button>
-          </div>
+            <form onSubmit={handleShorten} className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                type="url"
+                inputMode="url"
+                value={originalUrl}
+                onChange={(e) => setOriginalUrl(e.target.value)}
+                placeholder="https://example.com/a-very-long-url"
+                aria-label="URL to shorten"
+                className="flex-1"
+              />
+              <Button type="submit" disabled={demoApi.loading} className="gap-2">
+                {demoApi.loading && <Loader2 className="size-4 animate-spin" />}
+                {demoApi.loading ? "Shortening..." : "Shorten"}
+              </Button>
+            </form>
 
-          {demoApi.loading && (
-            <p className="mt-4 text-sm text-gray-600 flex justify-center items-center">Shortening...</p>
-          )}
-          {error && <div className="text-red-600 flex justify-center items-center pt-3">{error}</div>}
-          {demoApi.data && (
-            <div className="mt-6 text-center border-t pt-6">
+            {error && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              <p className="text-lg font-semibold text-gray-800 mb-4">
-                Your link created successfully!
-              </p>
+            {createdCode && (
+              <div className="mt-6 border-t pt-6">
+                <p className="mb-3 text-center text-sm font-medium">
+                  Your link is ready
+                </p>
 
-              <div className="flex items-center justify-center gap-3 p-4 border rounded-lg">
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <a
+                    href={shortUrl(createdCode)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="min-w-0 flex-1 truncate font-medium text-primary hover:underline"
+                  >
+                    {shortUrlLabel(createdCode)}
+                  </a>
 
-                {/* 75% LINK */}
-                <a
-                  href={`${process.env.NEXT_PUBLIC_BASE_URL}/${demoApi.data.data.short_code}`}
-                  target="_blank"
-                  className="flex-1 max-w-[75%] text-indigo-600 font-bold text-lg truncate hover:underline"
-                >
-                  {`${process.env.NEXT_PUBLIC_BASE_URL}/${demoApi.data.data.short_code}`.replace("http://", "")}
-                </a>
-
-                {/* COPY BUTTON / TICK BUTTON */}
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      `${process.env.NEXT_PUBLIC_BASE_URL}/${demoApi.data.data.short_code}`
-                    );
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 20000);
-                  }}
-                  className={`
-          w-[25%] px-4 py-2 rounded-md text-sm font-medium
-          border transition-all
-          ${copied
-                      ? "border-green-600 text-green-600 flex items-center justify-center"
-                      : "bg-gray-100 border-gray-300 text-gray-800 hover:bg-gray-200"}
-        `}
-                >
-                  {copied ? <Check /> : "Copy"}
-                </button>
-
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopy}
+                    className="shrink-0 gap-2"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="size-4" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-4" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
+            )}
 
-              <p className="text-sm text-gray-600 mt-4">
-                Enjoy 1 free shortened link before signing in.
-              </p>
-            </div>
-          )}
-          <div className="mt-6 text-center border-t pt-6">
-            <p className="text-sm text-gray-600">
-              Free trial allows creating 1 demo link. Sign up to unlock unlimited URL shortening.
+            <p className="mt-6 border-t pt-6 text-center text-sm text-muted-foreground">
+              The demo covers one link.{" "}
+              <Link
+                href="/register"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
+                Sign up
+              </Link>{" "}
+              for unlimited shortening and analytics.
             </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </section>
 
-      {/* STATS SECTION */}
-      <section className="max-w-5xl mx-auto px-6 py-16">
-        {statsLoading && (
-          <p className="text-center text-gray-600">Loading stats...</p>
-        )}
-
-        {statsError && (
-          <p className="text-center text-red-600">
+      <section className="mx-auto max-w-5xl px-6 pb-16">
+        {statsApi.loading && !statsData ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-40 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : statsError ? (
+          <p className="text-center text-sm text-muted-foreground">
             {statsError}
           </p>
-        )}
-
-        {statsData && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-8 bg-white border border-gray-200 rounded-lg">
-              <Users size={32} className="mx-auto text-indigo-600 mb-3" />
-              <h3 className="text-4xl font-bold text-gray-900">
-                {statsData.total_users}
-              </h3>
-              <p className="text-sm text-gray-600 mt-2">Total Users</p>
-            </div>
-
-            <div className="text-center p-8 bg-white border border-gray-200 rounded-lg">
-              <Layers size={32} className="mx-auto text-indigo-600 mb-3" />
-              <h3 className="text-4xl font-bold text-gray-900">
-                {statsData.total_urls}
-              </h3>
-              <p className="text-sm text-gray-600 mt-2">URLs Shortened</p>
-            </div>
-
-            <div className="text-center p-8 bg-white border border-gray-200 rounded-lg">
-              <MousePointerClick size={32} className="mx-auto text-indigo-600 mb-3" />
-              <h3 className="text-4xl font-bold text-gray-900">
-                {statsData.total_clicks}
-              </h3>
-              <p className="text-sm text-gray-600 mt-2">Total Clicks</p>
-            </div>
+        ) : statsData ? (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <StatCard icon={Users} value={statsData.total_users} label="Total users" />
+            <StatCard icon={Layers} value={statsData.total_urls} label="URLs shortened" />
+            <StatCard
+              icon={MousePointerClick}
+              value={statsData.total_clicks}
+              label="Total clicks"
+            />
           </div>
-        )}
+        ) : null}
       </section>
 
-      {/* FEATURES SECTION */}
-      <section className="max-w-5xl mx-auto px-6 py-16">
-        <h2 className="text-center text-3xl font-bold text-gray-900 mb-12">
+      <section className="mx-auto max-w-5xl px-6 pb-20">
+        <h2 className="mb-10 text-center text-2xl font-semibold tracking-tight sm:text-3xl">
           Why SnapURL?
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-8 bg-white border border-gray-200 rounded-lg">
-            <Link2 className="text-indigo-600 mb-4" size={32} />
-            <h3 className="font-semibold text-xl text-gray-900">Shorten Instantly</h3>
-            <p className="text-gray-600 mt-3 text-sm leading-relaxed">
-              Create clean and memorable links with a single click.
-            </p>
-          </div>
-
-          <div className="p-8 bg-white border border-gray-200 rounded-lg">
-            <BarChart className="text-indigo-600 mb-4" size={32} />
-            <h3 className="font-semibold text-xl text-gray-900">Real-Time Analytics</h3>
-            <p className="text-gray-600 mt-3 text-sm leading-relaxed">
-              Track clicks by device, country, referrer, and timeline.
-            </p>
-          </div>
-
-          <div className="p-8 bg-white border border-gray-200 rounded-lg">
-            <ShieldCheck className="text-indigo-600 mb-4" size={32} />
-            <h3 className="font-semibold text-xl text-gray-900">Bot Detection</h3>
-            <p className="text-gray-600 mt-3 text-sm leading-relaxed">
-              Automatically filter bot clicks for clean analytics.
-            </p>
-          </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {features.map(({ icon: Icon, title, body }) => (
+            <Card key={title}>
+              <CardContent className="p-6">
+                <Icon className="mb-4 size-6 text-primary" />
+                <h3 className="font-semibold">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {body}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="py-8 text-center text-sm text-gray-500 border-t border-gray-200 mt-16">
+      <footer className="border-t py-8 text-center text-sm text-muted-foreground">
         © {new Date().getFullYear()} SnapURL — All rights reserved.
       </footer>
-
     </div>
-  )
+  );
 }

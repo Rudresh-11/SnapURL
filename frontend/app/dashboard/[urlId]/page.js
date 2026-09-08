@@ -1,483 +1,515 @@
-'use client';
-import { use, useState, useEffect } from 'react';
-import { ChevronLeft, Copy, Share2, MoreVertical, Globe, Calendar, TagIcon, Pencil, Share2Icon, Trash, Ticket, Check, CornerDownRight, X } from 'lucide-react';
-import { ChartBarInteractive } from '@/components/analytics/barchart.js';
-import { ChartPieDonut } from '@/components/analytics/piechart';
-import { useParams } from 'next/navigation';
-import useApi from '@/hooks/useApi';
-import Link from 'next/link';
-import Image from 'next/image';
-import { DropdownMenuDemo } from '@/components/dropdown';
-import ConfirmDialog from '@/components/confirm-dialog';
-import AlertDemo from "@/components/alertdialog";
-import { ClicksTable } from '@/components/analytics/datatable';
-import { formatIST } from '@/lib/timeconverter';
-import { notFound } from 'next/navigation';
+"use client";
 
-const ShareLinkModal = ({ link = "", onClose }) => {
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound, useParams, useRouter } from "next/navigation";
+import {
+  Calendar,
+  Check,
+  ChevronLeft,
+  Copy,
+  CornerDownRight,
+  Link2,
+  MoreVertical,
+  Share2,
+  TagIcon,
+  Trash2,
+  X,
+} from "lucide-react";
+
+import useApi from "@/hooks/useApi";
+import { faviconFor, shortUrl, shortUrlLabel, titleFromUrl } from "@/lib/links";
+import { formatIST } from "@/lib/timeconverter";
+import { ChartBarInteractive } from "@/components/analytics/barchart";
+import { ChartPieDonut } from "@/components/analytics/piechart";
+import { ClicksTable } from "@/components/analytics/datatable";
+import { DropdownMenuDemo } from "@/components/dropdown";
+import ConfirmDialog from "@/components/confirm-dialog";
+import ToastAlert from "@/components/alertdialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+const SOCIAL_PLATFORMS = [
+  { name: "WhatsApp", href: (u) => `https://wa.me/?text=${encodeURIComponent(u)}`, domain: "whatsapp.com" },
+  { name: "Facebook", href: (u) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(u)}`, domain: "facebook.com" },
+  { name: "X", href: (u) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(u)}`, domain: "x.com" },
+  { name: "LinkedIn", href: (u) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(u)}`, domain: "linkedin.com" },
+];
+
+function ShareLinkModal({ link, onClose }) {
   const [copied, setCopied] = useState(false);
 
-  const platforms = [
-    { name: "WhatsApp", url: "whatsapp.com" },
-    { name: "Facebook", url: "facebook.com" },
-    { name: "Instagram", url: "instagram.com" },
-    { name: "Twitter", url: "twitter.com" },
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
 
-  ];
-
-  const handleSocialClick = (platform) => {
-    alert(`${platform} sharing functionality not implemented yet. Please copy the link and share manually.`);
-  };
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(link).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Share your Snapurl Link</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X size={24} />
-          </button>
-        </div>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Share your link"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+    >
+      <Card className="relative w-full max-w-lg">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-3 right-3"
+        >
+          <X className="size-4" />
+        </Button>
 
-        {/* Social Platforms */}
-        <div className="flex items-center justify-center gap-3 mb-6 overflow-x-auto pb-2">
-          {platforms.map((platform) => (
-            <button
-              key={platform.name}
-              onClick={() => handleSocialClick(platform.name)}
-              className="flex flex-col items-center gap-2 min-w-fit hover:opacity-80 transition-opacity"
+        <CardHeader>
+          <CardTitle className="text-xl">Share your SnapURL link</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="flex flex-wrap items-center justify-center gap-5">
+            {SOCIAL_PLATFORMS.map((p) => (
+              <a
+                key={p.name}
+                href={p.href(link)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-col items-center gap-2 rounded-md p-1 transition-opacity hover:opacity-80"
+              >
+                <span className="flex size-12 items-center justify-center rounded-full border bg-card">
+                  <Image
+                    src={`https://www.google.com/s2/favicons?domain=${p.domain}&sz=64`}
+                    width={28}
+                    height={28}
+                    alt=""
+                    className="size-7"
+                    unoptimized
+                  />
+                </span>
+                <span className="text-xs font-medium">{p.name}</span>
+              </a>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              {link}
+            </span>
+            <Button
+              size="sm"
+              className="shrink-0 gap-2"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(link);
+                  setCopied(true);
+                } catch {
+                }
+              }}
             >
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-md`}>
-                <Image
-                  src={`https://www.google.com/s2/favicons?domain=${platform.url}&sz=64`}
-                  width={32}
-                  height={32}
-                  alt="icon"
-                />
-              </div>
-              <span className="text-xs text-gray-700 font-medium">{platform.name}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Link Input with Copy Button */}
-        <div className="border border-gray-300 rounded-lg p-4 flex items-center justify-between bg-gray-50">
-          <span className="text-gray-700 font-medium">{link}</span>
-          <button
-            onClick={handleCopyLink}
-            className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-      </div>
+              {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-};
+}
 
-const SkeletonLoader = () => {
+function DetailSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Back Button Skeleton */}
-        <div className="mb-6">
-          <div className="h-5 w-24 bg-gray-200 rounded animate-pulse"></div>
-        </div>
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+      <Skeleton className="h-5 w-28" />
 
-        {/* Header Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-start gap-4">
-            {/* Icon Skeleton */}
-            <div className="w-12 h-12 bg-gray-200 rounded animate-pulse"></div>
-
-            <div className="flex-1">
-              {/* Title Skeleton */}
-              <div className="h-7 w-64 bg-gray-200 rounded animate-pulse mb-3"></div>
-
-              {/* URL Skeleton */}
-              <div className="h-5 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
-
-              {/* Destination URL Skeleton */}
-              <div className="h-4 w-56 bg-gray-200 rounded animate-pulse mb-4"></div>
-
-              {/* Date and Tag Skeleton */}
-              <div className="flex items-center gap-4">
-                <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            </div>
-
-            {/* Action Buttons Skeleton */}
-            <div className="flex gap-2">
-              <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
-              <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
-            </div>
+      <Card>
+        <CardContent className="flex items-start gap-4 p-6">
+          <Skeleton className="size-12 shrink-0 rounded-full" />
+          <div className="flex-1 space-y-3">
+            <Skeleton className="h-7 w-64" />
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-72" />
+            <Skeleton className="h-4 w-56" />
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Clicks Summary Card */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="mb-4">
-            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
-          </div>
+      <Skeleton className="h-[340px] w-full rounded-xl" />
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="text-center py-4 border-r last:border-r-0">
-                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse mx-auto mb-2"></div>
-                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse mx-auto"></div>
-              </div>
-            ))}
-          </div>
-
-          {/* Bar Chart Skeleton */}
-          <div className="flex items-end justify-between gap-2 h-48">
-            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full bg-gray-200 rounded-t animate-pulse"
-                  style={{ height: `${Math.random() * 60 + 40}%` }}
-                ></div>
-                <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Countries Section */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="h-6 w-24 bg-gray-200 rounded animate-pulse mb-6"></div>
-
-          {/* Country List Skeleton */}
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center gap-4">
-                {/* Rank */}
-                <div className="h-5 w-6 bg-gray-200 rounded animate-pulse"></div>
-
-                {/* Country Name */}
-                <div className="h-5 w-20 bg-gray-200 rounded animate-pulse"></div>
-
-                {/* Progress Bar */}
-                <div className="flex-1 h-4 bg-gray-100 rounded overflow-hidden">
-                  <div
-                    className="h-full bg-gray-200 rounded animate-pulse"
-                    style={{ width: `${Math.random() * 70 + 30}%` }}
-                  ></div>
-                </div>
-
-                {/* Count */}
-                <div className="h-5 w-8 bg-gray-200 rounded animate-pulse"></div>
-
-                {/* Percentage */}
-                <div className="h-5 w-12 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Skeleton className="h-[420px] w-full rounded-xl" />
+        <Skeleton className="h-[420px] w-full rounded-xl" />
       </div>
-
-      <style jsx>{`
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
-        }
-        .animate-pulse {
-          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-      `}</style>
     </div>
   );
-};
+}
 
+function normalizeDaily(daily = []) {
+  return daily.map((item) => ({
+    date: String(item.day).split("T")[0],
+    clicks: Number(item.clicks) || 0,
+  }));
+}
 
+function formatCountries(rows = []) {
+  const arr = rows
+    .map((item) => ({
+      country: item.country || "Unknown",
+      clicks: Number(item.total) || 0,
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  const total = arr.reduce((sum, item) => sum + item.clicks, 0);
+
+  return arr.map((item, index) => ({
+    rank: index + 1,
+    country: item.country,
+    clicks: item.clicks,
+    percentage: total > 0 ? Math.round((item.clicks / total) * 100) : 0,
+  }));
+}
+
+function formatCreatedAt(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const hrs = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
+  const mins = String(Math.abs(offset) % 60).padStart(2, "0");
+
+  return `${formatIST(date)} GMT${sign}${hrs}:${mins}`;
+}
 
 export default function LinkAnalytics() {
+  const router = useRouter();
+  const { urlId } = useParams();
 
-  function normalizeData(apiDaily) {
-    return apiDaily.map(item => ({
-      date: item.day.split("T")[0],
-      clicks: Number(item.clicks)
-    }));
-  }
+  const validId = Number.isInteger(Number(urlId)) && Number(urlId) > 0;
 
-  function formatLocationData(raw) {
-    // 1. Convert totals to numbers
-    const arr = raw.map(item => ({
-      country: item.country,
-      clicks: Number(item.total)
-    }));
+  const [isCopied, setIsCopied] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [isShare, setIsShare] = useState(false);
 
-    // 2. Calculate total clicks
-    const totalClicks = arr.reduce((sum, item) => sum + item.clicks, 0);
+  const deleteApi = useApi(`/url/delete/${urlId}`, { method: "DELETE" });
+  const overviewApi = useApi(`/analytics/${urlId}/overview`, {
+    auto: validId,
+    method: "GET",
+  });
+  const clicksApi = useApi(`/analytics/${urlId}/allclicks`, {
+    auto: validId,
+    method: "GET",
+  });
 
-    // 3. Sort by clicks (descending)
-    arr.sort((a, b) => b.clicks - a.clicks);
+  useEffect(() => {
+    if (!isCopied) return;
+    const t = setTimeout(() => setIsCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [isCopied]);
 
-    // 4. Format with rank + percentage
-    return arr.map((item, index) => ({
-      rank: index + 1,
-      country: item.country,
-      clicks: item.clicks,
-      percentage: Math.round((item.clicks / totalClicks) * 100)
-    }));
-  }
+  if (!validId) notFound();
 
-  function parseTitleFromUrl(url) {
-    try {
-      const hostname = new URL(url).hostname; // google.com
-      const name = hostname.replace("www.", "").split(".")[0]; // google
-      return name.charAt(0).toUpperCase() + name.slice(1); // Google
-    } catch {
-      return "Untitled";
-    }
-  }
+  const overview = overviewApi.data?.data?.overview;
+  const clicks = clicksApi.data?.data?.clicks ?? [];
 
-  function formatDate(d) {
-    const date = new Date(d);
-
-    const formatted = formatIST(date)
-
-    const offset = -date.getTimezoneOffset();
-    const sign = offset >= 0 ? "+" : "-";
-    const hrs = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
-    const mins = String(Math.abs(offset) % 60).padStart(2, "0");
-
-    return `${formatted} GMT${sign}${hrs}:${mins}`;
-  }
-
-  const params = useParams();
-  const { urlId } = params;
-
-  if (!Number.isInteger(Number(urlId)) || Number(urlId) <= 0) {
-    return notFound();
-  }
-
-  const [isCopied, setIsCopied] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [alert, setAlert] = useState(false)
-  const [isShare, setIsShare] = useState(false)
-  const deleteApi = useApi(`/url/delete/${urlId}`, { auto: false, method: "DELETE" });
-  const overviewApi = useApi(`/analytics/${urlId}/overview`, { auto: true, method: "GET" });
-  const overviewData = overviewApi.data?.data?.overview;
-  const clicksApi = useApi(`/analytics/${urlId}/allclicks`, { auto: true, method: "GET" });
-  const clicksData = clicksApi.data?.data?.clicks
+  if (overviewApi.errorStatus === 404) notFound();
 
   if (overviewApi.error) {
-    return <div>Url not found in database</div>
+    return (
+      <div className="mx-auto w-full max-w-2xl p-4 sm:p-6">
+        <Alert variant="destructive">
+          <AlertTitle>Couldn&apos;t load this link</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            {overviewApi.error}
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/links">Back to links</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
   }
 
-  if (overviewApi.loading || !overviewData) {
-    return <SkeletonLoader />;
-  }
+  if (overviewApi.loading || !overview) return <DetailSkeleton />;
 
-  if (clicksApi.loading || !clicksData) {
-    return <div>Loading</div>;
-  }
-  console.log("hummjsfgvsjhbvsdhbfsdjfb.jkshdf.jrhgbf.ksjdgb.jgbhfd");
+  const { url, summary, daily, countries, devices, referrers } = overview;
+  const href = shortUrl(url.short_code);
+  const favicon = faviconFor(url.original_url);
+  const countryRows = formatCountries(countries);
+  const title = url.title?.trim() && url.title !== "Untitled"
+    ? url.title
+    : titleFromUrl(url.original_url);
 
-  console.log("Error ", overviewApi.error)
-  const totalClicks = overviewData.summary.total_clicks;
-  const rawData = normalizeData(overviewData.daily);
-  const locationData = formatLocationData(overviewData.countries);
-  const myreferrersData = overviewData.referrers;
-  const devicesData = overviewData.devices;
-
-  // console.log(clicksData)
-
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(`https://${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(href);
+      setIsCopied(true);
+    } catch {
+      setToast({
+        type: "error",
+        message: "Couldn't copy",
+        description: "Your browser blocked clipboard access.",
+      });
+    }
   };
 
   const handleDelete = async () => {
-    const response = await deleteApi.request();
-    if (!response) {
-      setAlert({
+    const res = await deleteApi.request();
+    if (!res) {
+      setToast({
         type: "error",
-        message: "Error deleting link",
-        description: deleteApi?.error || "An unexpected error occurred.",
+        message: "Could not delete link",
+        description: deleteApi.errorRef.current || "An unexpected error occurred.",
       });
       return;
     }
-    window.location.href = '/dashboard/links';
+    router.push("/dashboard/links");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {alert && (<AlertDemo {...alert} />)}
-      {isShare && (<ShareLinkModal link={`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`} onClose={() => { setIsShare(false) }} />)}
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6">
-            <ChevronLeft className="w-4 h-4" />
-            <span className="font-medium"><Link href="/dashboard/links">Back to list</Link></span>
-          </button>
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+      {toast && <ToastAlert key={toast.description} {...toast} />}
 
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Image width={24} height={24} src={`https://www.google.com/s2/favicons?domain=${overviewData.url.original_url}`} alt="Favicon" className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-                  {parseTitleFromUrl(overviewData.url.original_url)} – untitled
-                </h1>
-                <div className="flex items-center gap-2 mb-2">
-                  <a
-                    href={`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    {`${process.env.NEXT_PUBLIC_BASE_URL}/${overviewData.url.short_code}`.replace("https://", "")}
-                  </a>
-                  <button onClick={handleCopy} className="text-gray-400 hover:text-blue-600 cursor-pointer">
-                    {isCopied ? <Check className="w-4 h-4 " /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-                <div className="text-sm text-gray-500 flex items-center gap-2">
-                  <span className="text-gray-400"><CornerDownRight className="w-4 h-4" /></span>
-                  <span className="truncate max-w-2xl">
-                    <a className='hover:underline' href={overviewData.url.original_url} target="_blank" rel="noopener noreferrer">{overviewData.url.original_url}</a>
-                  </span>
-                </div>
-                <div className="border-b border-gray-300 mt-3 mb-2 w-full"></div>
-                <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    {formatDate(overviewData.url.created_at)}
-                  </span>
+      {isShare && (
+        <ShareLinkModal link={href} onClose={() => setIsShare(false)} />
+      )}
 
-                  <span className="flex items-center gap-1">
-                    <TagIcon className="w-4 h-4" />
-                    No tags - <span className='text-gray-400'>Feature will be added soon</span>
-                  </span>
-                </div>
-              </div>
+      <ConfirmDialog
+        open={showConfirm}
+        setOpen={setShowConfirm}
+        title="Delete link"
+        description="Are you sure you want to delete this link? Its click history goes with it and this cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDelete}
+      />
+
+      <Button asChild variant="ghost" size="sm" className="-ml-2 gap-1">
+        <Link href="/dashboard/links">
+          <ChevronLeft className="size-4" />
+          Back to list
+        </Link>
+      </Button>
+
+      <Card>
+        <CardContent className="flex flex-wrap items-start justify-between gap-4 p-6">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+              {favicon ? (
+                <Image
+                  width={24}
+                  height={24}
+                  src={favicon}
+                  alt=""
+                  className="size-6"
+                  unoptimized
+                />
+              ) : (
+                <Link2 className="size-5 text-muted-foreground" />
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setIsShare(true)} className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer">
-                <Share2 className="w-5 h-5 text-gray-600" />
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer">
-                <DropdownMenuDemo
-                  trigger={<MoreVertical className="w-5 h-5 text-gray-600" />}
-                  label="Actions"
-                  items={[
-                    {
-                      label: "Delete",
-                      icon: <Trash className="w-4 h-4 text-red-500" />,
-                      onClick: () => { setShowConfirm(true); },
-                    },
-                  ]}
-                />
-                <ConfirmDialog
-                  open={showConfirm}
-                  setOpen={setShowConfirm}
-                  title="Delete Link"
-                  description="Are you sure you want to delete this link? This action cannot be undone."
-                  confirmText="Delete"
-                  cancelText="Cancel"
-                  onConfirm={handleDelete}
-                />
-              </button>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
+                {title}
+              </h1>
+
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate font-medium text-primary hover:underline"
+                >
+                  {shortUrlLabel(url.short_code)}
+                </a>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 shrink-0"
+                  onClick={handleCopy}
+                  aria-label="Copy short link"
+                >
+                  {isCopied ? (
+                    <Check className="size-3.5 text-success" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                </Button>
+              </div>
+
+              <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CornerDownRight className="size-4 shrink-0" />
+                <a
+                  href={url.original_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="truncate hover:underline"
+                >
+                  {url.original_url}
+                </a>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-3 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="size-4" />
+                  {formatCreatedAt(url.created_at)}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <TagIcon className="size-4" />
+                  No tags
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsShare(true)}
+              aria-label="Share link"
+            >
+              <Share2 className="size-4" />
+            </Button>
+
+            <DropdownMenuDemo
+              trigger={
+                <Button variant="ghost" size="icon" aria-label="More actions">
+                  <MoreVertical className="size-4" />
+                </Button>
+              }
+              label="Actions"
+              items={[
+                {
+                  label: "Copy short link",
+                  icon: <Copy size={16} />,
+                  onClick: handleCopy,
+                },
+                {
+                  label: "Delete",
+                  icon: <Trash2 size={16} />,
+                  onClick: () => setShowConfirm(true),
+                },
+              ]}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[
+          { label: "Total clicks", value: summary?.total_clicks ?? 0 },
+          { label: "Unique visitors", value: summary?.unique_users ?? 0 },
+          { label: "Countries", value: summary?.unique_countries ?? 0 },
+          { label: "Referrers", value: summary?.unique_referrers ?? 0 },
+        ].map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="p-5">
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {stat.value}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Engagements Over Time */}
-        <ChartBarInteractive data={rawData} />
-        {/* Locations */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6 mt-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Countries</h2>
-          </div>
+      <ChartBarInteractive
+        data={normalizeDaily(daily)}
+        title="Clicks over time"
+        description="Daily clicks on this link"
+      />
 
-          {/* VALIDATION */}
-          {overviewData.countries === undefined ? (
-            // 1️⃣ Loading state (API still fetching)
-            <div className="text-gray-500 text-sm">Loading country data...</div>
-
-          ) : locationData.length === 0 ? (
-            // 2️⃣ Empty state
-            <div className="text-gray-500 text-sm flex justify-center items-center ">
-              Your location-based analytics will appear here once you get traffic.
-            </div>
-
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Countries</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {countryRows.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Location analytics will appear here once this link gets traffic.
+            </p>
           ) : (
-            // 3️⃣ Data Available
             <div className="space-y-3">
-              {locationData.map((country) => (
-                <div key={country.rank} className="flex items-center gap-4">
-                  <span className="text-sm text-gray-500 w-6">{country.rank}</span>
-                  <span className="text-sm font-medium text-gray-900 w-24">{country.country}</span>
-
-                  <div className="flex-1 bg-gray-100 rounded-full h-2 relative">
+              {countryRows.map((row) => (
+                <div key={row.country} className="flex items-center gap-3 sm:gap-4">
+                  <span className="w-5 shrink-0 text-sm text-muted-foreground tabular-nums">
+                    {row.rank}
+                  </span>
+                  <span className="w-24 shrink-0 truncate text-sm font-medium sm:w-32">
+                    {row.country}
+                  </span>
+                  <div
+                    className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
+                    role="presentation"
+                  >
                     <div
-                      className="bg-blue-500 h-2 rounded-full"
-                      style={{ width: `${country.percentage}%` }}
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${row.percentage}%` }}
                     />
                   </div>
-
-                  <span className="text-sm text-gray-600 w-12">{country.clicks}</span>
-                  <span className="text-sm text-gray-500 w-12">{country.percentage}%</span>
+                  <span className="w-10 shrink-0 text-right text-sm tabular-nums">
+                    {row.clicks}
+                  </span>
+                  <span className="w-12 shrink-0 text-right text-sm text-muted-foreground tabular-nums">
+                    {row.percentage}%
+                  </span>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Referrers and Devices */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartPieDonut
-            data={myreferrersData}
-            labelKey="referrer"
-            valueKey="total"
-            title="Referrer Traffic"
-          />
-          {/* Devices */}
-          <ChartPieDonut
-            title="Device Breakdown"
-            data={devicesData}
-            labelKey="device_type"
-            valueKey="total"
-          />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ChartPieDonut
+          title="Referrer traffic"
+          description="Where these clicks came from"
+          data={referrers}
+          labelKey="referrer"
+          valueKey="total"
+        />
+        <ChartPieDonut
+          title="Device breakdown"
+          description="Clicks by device type"
+          data={devices}
+          labelKey="device_type"
+          valueKey="total"
+        />
+      </div>
 
-        </div>
-        {!clicksData || clicksData.length === 0 ? (
-          <div className="text-gray-500 text-sm my-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 mt-8">All Clicks Data</h2>
-            No clicks recorded yet.
-          </div>
+      <div>
+        <h2 className="mb-4 text-lg font-semibold tracking-tight">
+          All clicks
+        </h2>
+
+        {clicksApi.loading ? (
+          <Skeleton className="h-64 w-full rounded-xl" />
+        ) : clicksApi.error ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              Could not load the click log: {clicksApi.error}
+            </AlertDescription>
+          </Alert>
+        ) : clicks.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-10 text-center text-sm text-muted-foreground">
+              No clicks recorded yet.
+            </CardContent>
+          </Card>
         ) : (
-          <>
-            <h2 className="text-4xl font-semibold text-gray-900 mb-4 mt-8">All Clicks Data</h2>
-            <ClicksTable data={clicksData} />
-          </>
+          <ClicksTable data={clicks} />
         )}
       </div>
     </div>
